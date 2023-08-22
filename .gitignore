@@ -1,4 +1,5 @@
-
+#temporary files
+.temp/*
 
 # .idea but not runConfigurations
 .idea/*
