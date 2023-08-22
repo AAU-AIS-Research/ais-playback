@@ -1,5 +1,8 @@
 #temporary files
-.temp/*
+temp/*
+
+#Local config files
+configs/local_*
 
 # .idea but not runConfigurations
 .idea/*
