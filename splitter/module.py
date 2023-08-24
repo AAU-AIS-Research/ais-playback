@@ -1,13 +1,15 @@
 """Module for splitting AIS data into files by vessel by day."""
-
 import pandas as pd
 import os
-from splitter.helper_functions import read_csv, read_config, collect_columns_names
-from main_helper import collect_files, timeit
+from splitter.helper_functions import read_csv, read_config
+from main_helper import collect_files
+import configparser
+
+from datetime import datetime, timedelta
+from time import perf_counter
 
 
-@timeit
-def _split_by_time(dataframe):
+def _split_by_time(dataframe: pd.DataFrame) -> list[pd.DataFrame]:
     """Split the AIS data by time.
 
     Args:
@@ -25,8 +27,7 @@ def _split_by_time(dataframe):
     return df_lst
 
 
-@timeit
-def _split_by_vessel(dataframe, config):
+def _split_by_vessel(dataframe: pd.DataFrame, config: configparser.ConfigParser) -> list[pd.DataFrame]:
     """Split the AIS data by vessel.
 
     Args:
@@ -47,48 +48,67 @@ def _split_by_vessel(dataframe, config):
     return df_splits
 
 
-@timeit
-def _split_datetime(df, config):
+def _split_timestamp_column(dataframe: pd.DataFrame, config: configparser.ConfigParser) -> pd.DataFrame:
     """Split the datetime column into date and time columns.
 
     Args:
-        df: The dataframe to split.
+        dataframe: The dataframe to split.
         config: A configparser object containing the configuration.
     """
     temporal_column = config['ColumnNames']['timestamp']
     timestamp_format = config['DataSource']['timestamp-format']
 
-    df['date'] = pd.to_datetime(df[temporal_column], format=timestamp_format).dt.date
-    df['time'] = pd.to_datetime(df[temporal_column], format=timestamp_format).dt.time
+    dataframe['date'] = pd.to_datetime(dataframe[temporal_column], format=timestamp_format).dt.date
+    dataframe['time'] = pd.to_datetime(dataframe[temporal_column], format=timestamp_format).dt.time
 
-    df.drop(columns=[temporal_column], inplace=True)
+    dataframe.drop(columns=[temporal_column], inplace=True)
 
-    return df
+    return dataframe
 
 
-@timeit
-def split(config_file: str):
+def split(*, config_path: str, source_path: str, target_path: str) -> None:
     """Split the AIS data.
 
     Args:
-        config_file: The name of the config file to use.
+        config_path: The path to the config file.
+        source_path: The path to the source data. If a folder, all files in the folder will be split.
+        target_path: The path to the target folder. Will be created if it does not exist.
     """
-    print('Splitting data...')
+    total_start_time = perf_counter()
+    config_name = os.path.basename(config_path)
 
-    config_path = os.path.abspath("./configs/" + config_file)
+    print(f'Splitting AIS data using config: {config_name} at {datetime.now()}')
+    print(f'Source path: {source_path}')
+    print(f'Target path: {target_path}')
+
+    number_of_files = len(collect_files(source_path, read_config(config_path)))
+
+    print(f'Number of files to split: {number_of_files}')
+
     config = read_config(config_path)
-
-    files = collect_files(config)
-    columns = collect_columns_names(config)
+    files = collect_files(source_path, config)
+    current_file_number = 0
 
     for file in files:
-        print(f'Splitting file: {file}')
-        df = read_csv(file, columns)
+        start_time_file = perf_counter()
+        file_name = os.path.basename(file)
 
+        current_file_number += 1
+        print(f'Attempting to split file {current_file_number} of {number_of_files}: {file_name} at {datetime.now()}')
+
+        start_time_read = perf_counter()
+        df = read_csv(file, config)
+
+        print(f'File {file_name} read successfully in '
+              f'{timedelta(seconds=(perf_counter() - start_time_read))} at {datetime.now()}')
+
+        # Drop rows with missing values
         df.dropna(inplace=True)
 
-        _split_datetime(df, config)
+        # Split timestamp column into date and time
+        _split_timestamp_column(df, config)
 
+        # Rename columns to ensure consistent output
         df.rename(columns={
             config['ColumnNames']['mmsi']: 'MMSI',
             config['ColumnNames']['imo']: 'IMO',
@@ -100,24 +120,33 @@ def split(config_file: str):
             config['ColumnNames']['heading']: 'heading',
         }, inplace=True)
 
-        target_folder = config['DataTarget']['path-split']
-        vessel_mmsi = config['ColumnNames']['mmsi']
-        if not os.path.exists(target_folder):
-            os.makedirs(target_folder)
+        # Ensure target path exists, create it if it does not.
+        if not os.path.exists(target_path):
+            os.makedirs(target_path)
 
+        # Split by date and vessel
+        vessel_mmsi = config['ColumnNames']['mmsi']
         for dataframe_date in _split_by_time(df):
             date = dataframe_date['date'].iloc[0]
-            if not os.path.exists(os.path.join(target_folder, str(date))):
-                os.makedirs(os.path.join(target_folder, str(date)))
+            print(f'Splitting vessels for date {date} at {datetime.now()}')
+            start_time_date = perf_counter()
+            if not os.path.exists(os.path.join(target_path, str(date))):
+                os.makedirs(os.path.join(target_path, str(date)))
             for dataframe_vessel in _split_by_vessel(dataframe_date, config):
                 mmsi = dataframe_vessel[vessel_mmsi].iloc[0]
+
                 dataframe_vessel.to_csv(
-                    os.path.join(target_folder, str(date), str(mmsi) + '.csv'),
+                    os.path.join(target_path, str(date), str(mmsi) + '.csv'),
                     index=False,
                     sep='|',
                     encoding='utf-8',
                     header=True)
 
-        print(f'File {file} split successfully')
+            print(f'Date {date} split successfully in '
+                  f'{timedelta(seconds=(perf_counter() - start_time_date))} at {datetime.now()}')
 
-    print('Done splitting')
+        print(f'File {file_name} split successfully in '
+              f'{timedelta(seconds=(perf_counter() - start_time_file))} at {datetime.now()}')
+
+    print(f'Splitting AIS data using config: {config_name} completed successfully in '
+          f'{timedelta(seconds=(perf_counter() - total_start_time))} at {datetime.now()}')

@@ -2,9 +2,11 @@
 from datetime import datetime, timedelta
 from time import perf_counter
 import os
+import configparser
+import warnings
 
 
-def timeit(func, name: str = None):
+def timeit(func, name: str = None):  # noqa: ANN001,ANN201
     """Execute a given function and prints the time it took the function to execute.
 
     Args:
@@ -14,7 +16,7 @@ def timeit(func, name: str = None):
     if name is None:
         name = func.__name__
 
-    def wrap(*args, **kwargs):
+    def wrap(*args, **kwargs):  # noqa: ANN002, ANN003, ANN201
         print(f"{name} started at {datetime.now()}")
         start = perf_counter()
         result = func(*args, **kwargs)
@@ -26,7 +28,7 @@ def timeit(func, name: str = None):
     return wrap
 
 
-def read_csv_header(file_name):
+def read_csv_header(file_name: str) -> list[str]:
     """Read the header of a csv file and return a list of column names in order of appearance."""
     if not file_name.endswith('.csv'):
         raise ValueError("File must be a csv file")
@@ -36,14 +38,13 @@ def read_csv_header(file_name):
         return header
 
 
-def collect_files(config):
+def collect_files(path: str, config: configparser.ConfigParser) -> list[str]:
     """Collect all files in a given path and return a list of file paths.
 
     Args:
         path: The path to collect files from.
         config: A configparser object containing the configuration.
     """
-    path = config['DataSource']['path']
     filetype = config['DataSource']['filetype']
 
     if os.path.isdir(path):
@@ -51,4 +52,17 @@ def collect_files(config):
     elif os.path.isfile(path):
         return [path if path.endswith(filetype) else None]
     else:
+        warnings.warn(f'Path {path} is not a file or a directory', UserWarning, stacklevel=2)
         return []
+
+
+def print_lines(file_name: str, number_of_lines: int = 5) -> None:
+    """Print the first n lines of a file.
+
+    Args:
+        file_name: The name of the file to print.
+        number_of_lines: The number of lines to print. (default: 5)
+    """
+    with open(file_name, 'r') as f:
+        for i in range(number_of_lines):
+            print(f.readline().strip())

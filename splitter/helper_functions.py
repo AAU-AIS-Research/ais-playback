@@ -1,22 +1,25 @@
 """This module contains helper functions for the splitter module."""
 import pandas as pd
+import os
 import configparser
-from main_helper import timeit
 
 
-@timeit
-def read_csv(file_name: str, limit_columns: list[str] = None) -> pd.DataFrame:
+def read_csv(file_name: str, config: configparser.ConfigParser) -> pd.DataFrame:
     """Read a csv file and return a pandas dataframe.
 
     Args:
         file_name: The name of the file to read.
         limit_columns: A list of column names to limit the dataframe to. (default: None)
     """
+    simple_columns = collect_columns_names(config)
+    seperator = config['DataSource']['separator']
+    encoding = config['DataSource']['encoding']
+
     if not file_name.endswith('.csv'):
         raise ValueError("File must be a csv file")
     else:
-        if limit_columns is not None:
-            df = pd.read_csv(file_name, usecols=limit_columns)
+        if simple_columns is not None:
+            df = pd.read_csv(file_name, usecols=simple_columns, sep=seperator, encoding=encoding)
         else:
             df = pd.read_csv(file_name)
     return df
@@ -25,7 +28,12 @@ def read_csv(file_name: str, limit_columns: list[str] = None) -> pd.DataFrame:
 def read_config(file_name: str) -> configparser.ConfigParser:
     """Read a config file and return a configparser object."""
     config = configparser.ConfigParser(interpolation=None)
+
+    if not os.path.isfile(file_name):
+        raise FileNotFoundError(f"Config file not found: {file_name}")
+
     config.read(file_name)
+
     return config
 
 

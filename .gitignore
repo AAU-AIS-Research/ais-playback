@@ -2,7 +2,7 @@
 temp/*
 
 #Local config files
-configs/local_*
+config_examples/local_*
 
 # .idea but not runConfigurations
 .idea/*
