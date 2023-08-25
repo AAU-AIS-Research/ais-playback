@@ -22,7 +22,7 @@ def split_ma():
 def playback_single_file():
     # Playback a single file
     playback(
-        source_path='C:/Project Data/AIS/Split/DMA/2023-08-13/311001262.csv',
+        source_path='C:/Project Data/AIS/Split/MA/2023-01-01/368396216.csv',
         target_path='C:/Project Data/AIS/Playback',
         speed=4)
 

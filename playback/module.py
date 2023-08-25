@@ -6,20 +6,6 @@ import datetime
 import time
 
 
-def _adjust_speed(dataframe: pd.DataFrame, speed: int) -> pd.DataFrame:
-    """Adjust the speed of the playback, removing rows from the dataframe.
-
-    Args:
-        dataframe: The dataframe to adjust.
-        speed: The speed to play back the data. 1 is real time, 2 is twice as fast, etc. Must be between 1 and 900.
-    """
-    if not 1 <= speed <= 900:
-        raise ValueError("Speed must be between 1 and 900")
-
-
-
-    return dataframe.iloc[::speed]
-
 # TODO: Find better parameter name than subset
 def playback(*, source_path: str, target_path: str, speed: int, subset: list[str | int] = None,
              start_time: datetime.time = datetime.time.min, stop_time: datetime.time = datetime.time.max) -> None:
@@ -45,17 +31,20 @@ def playback(*, source_path: str, target_path: str, speed: int, subset: list[str
     for file in files:
         file_name = os.path.basename(file)
 
-        dataframe = pd.read_csv(file)
+        # TODO: Fix so it handles date and time correctly
+        dataframe = pd.read_csv(file, encoding='utf-8', sep='|')
 
-        dataframe = _adjust_speed(dataframe, speed)
+        # Remove rows outside the time interval
+        dataframe = dataframe[(dataframe['time'] >= start_time) & (dataframe['time'] <= stop_time)]
 
+        # Remove rows outside the subset
 
-        # Keep 1 entry for each second
+        # Group by time period based on speed
+        dataframe_list = dataframe.groupby(pd.Grouper(key='time', freq=f'{speed}S'))
 
-
-
-
-    # df.to_csv(os.path.join(target_path, file_name), index=False)
-
-    print(f'Playback complete in {time.perf_counter() - total_start_time} seconds at {datetime.datetime.now()}')
-
+        # Emit each group
+        for group in dataframe_list:
+            print('Emitting group')
+            print(group)
+            print('Sleeping')
+            time.sleep(1)

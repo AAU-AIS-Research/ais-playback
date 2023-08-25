@@ -116,6 +116,7 @@ def split(*, config_path: str, source_path: str, target_path: str, prune_to_date
         # Split timestamp column into date and time
         _split_timestamp_column(df, config)
 
+        # TODO: Make it so every column in the dataframe gets renamed (currently only simple columns are renamed)
         # Rename columns to ensure consistent output
         df.rename(columns={
             config['ColumnNames']['mmsi']: 'MMSI',
@@ -139,7 +140,7 @@ def split(*, config_path: str, source_path: str, target_path: str, prune_to_date
 
             # If date is before or after prune_to_date, skip
             if prune_to_date is not None and date != prune_to_date:
-                break
+                continue
 
             print(f'Splitting vessels for date {date} at {datetime.now()}')
 
@@ -151,7 +152,7 @@ def split(*, config_path: str, source_path: str, target_path: str, prune_to_date
 
             # Split by vessel
             for dataframe_vessel in _split_by_vessel(dataframe_date, config):
-                mmsi = dataframe_vessel[vessel_mmsi].iloc[0]
+                mmsi = int(dataframe_vessel[vessel_mmsi].iloc[0])
 
                 # Write to file
                 dataframe_vessel.to_csv(
