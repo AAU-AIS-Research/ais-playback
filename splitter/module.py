@@ -66,13 +66,14 @@ def _split_timestamp_column(dataframe: pd.DataFrame, config: configparser.Config
     return dataframe
 
 
-def split(*, config_path: str, source_path: str, target_path: str) -> None:
+def split(*, config_path: str, source_path: str, target_path: str, prune_to_date: datetime.date = None) -> None:
     """Split the AIS data.
 
     Args:
         config_path: The path to the config file.
         source_path: The path to the source data. If a folder, all files in the folder will be split.
         target_path: The path to the target folder. Will be created if it does not exist.
+        prune_to_date: The date to prune the data to. If None, all data will be split. (default: None)
     """
     total_start_time = perf_counter()
     config_name = os.path.basename(config_path)
@@ -81,13 +82,12 @@ def split(*, config_path: str, source_path: str, target_path: str) -> None:
     print(f'Source path: {source_path}')
     print(f'Target path: {target_path}')
 
-    number_of_files = len(collect_files(source_path, read_config(config_path)))
+    config = read_config(config_path)
+    files = collect_files(source_path, config['DataSource']['filetype'])
+    current_file_number = 0
+    number_of_files = len(files)
 
     print(f'Number of files to split: {number_of_files}')
-
-    config = read_config(config_path)
-    files = collect_files(source_path, config)
-    current_file_number = 0
 
     for file in files:
         start_time_file = perf_counter()
@@ -103,7 +103,15 @@ def split(*, config_path: str, source_path: str, target_path: str) -> None:
               f'{timedelta(seconds=(perf_counter() - start_time_read))} at {datetime.now()}')
 
         # Drop rows with missing values
-        df.dropna(inplace=True)
+        size_before = df.shape[0]
+        df.dropna(subset=[
+            config['ColumnNames']['mmsi'],
+            config['ColumnNames']['timestamp'],
+            config['ColumnNames']['lat'],
+            config['ColumnNames']['long'],
+        ] ,inplace=True)
+        size_after = df.shape[0]
+        print(f'Dropped {size_before - size_after} rows with missing values for MMSI, timestamp, lat or long')
 
         # Split timestamp column into date and time
         _split_timestamp_column(df, config)
@@ -124,17 +132,28 @@ def split(*, config_path: str, source_path: str, target_path: str) -> None:
         if not os.path.exists(target_path):
             os.makedirs(target_path)
 
-        # Split by date and vessel
+        # Split by date then vessel
         vessel_mmsi = config['ColumnNames']['mmsi']
         for dataframe_date in _split_by_time(df):
             date = dataframe_date['date'].iloc[0]
+
+            # If date is before or after prune_to_date, skip
+            if prune_to_date is not None and date != prune_to_date:
+                break
+
             print(f'Splitting vessels for date {date} at {datetime.now()}')
+
             start_time_date = perf_counter()
+
+            # Create date folder if it does not exist
             if not os.path.exists(os.path.join(target_path, str(date))):
                 os.makedirs(os.path.join(target_path, str(date)))
+
+            # Split by vessel
             for dataframe_vessel in _split_by_vessel(dataframe_date, config):
                 mmsi = dataframe_vessel[vessel_mmsi].iloc[0]
 
+                # Write to file
                 dataframe_vessel.to_csv(
                     os.path.join(target_path, str(date), str(mmsi) + '.csv'),
                     index=False,

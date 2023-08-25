@@ -2,7 +2,6 @@
 from datetime import datetime, timedelta
 from time import perf_counter
 import os
-import configparser
 import warnings
 
 
@@ -38,15 +37,13 @@ def read_csv_header(file_name: str) -> list[str]:
         return header
 
 
-def collect_files(path: str, config: configparser.ConfigParser) -> list[str]:
+def collect_files(path: str, filetype: str) -> list[str]:
     """Collect all files in a given path and return a list of file paths.
 
     Args:
         path: The path to collect files from.
         config: A configparser object containing the configuration.
     """
-    filetype = config['DataSource']['filetype']
-
     if os.path.isdir(path):
         return [os.path.join(path, file) for file in os.listdir(path) if file.endswith(filetype)]
     elif os.path.isfile(path):

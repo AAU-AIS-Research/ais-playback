@@ -11,17 +11,13 @@ def read_csv(file_name: str, config: configparser.ConfigParser) -> pd.DataFrame:
         file_name: The name of the file to read.
         limit_columns: A list of column names to limit the dataframe to. (default: None)
     """
-    simple_columns = collect_columns_names(config)
     seperator = config['DataSource']['separator']
     encoding = config['DataSource']['encoding']
 
     if not file_name.endswith('.csv'):
         raise ValueError("File must be a csv file")
     else:
-        if simple_columns is not None:
-            df = pd.read_csv(file_name, usecols=simple_columns, sep=seperator, encoding=encoding)
-        else:
-            df = pd.read_csv(file_name)
+        df = pd.read_csv(file_name, sep=seperator, encoding=encoding)
     return df
 
 
@@ -36,7 +32,7 @@ def read_config(file_name: str) -> configparser.ConfigParser:
 
     return config
 
-
+# DEAD CODE (previously used with read_csv)
 def collect_columns_names(config: configparser.ConfigParser) -> list[str]:
     """Collect all columns names from a config file and return a list of column names."""
     columns = []

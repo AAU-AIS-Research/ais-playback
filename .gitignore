@@ -1,5 +1,5 @@
 #temporary files
-temp/*
+tests/data/temp/*
 
 #Local config files
 config_examples/local_*
