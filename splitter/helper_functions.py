@@ -32,10 +32,14 @@ def read_config(file_name: str) -> configparser.ConfigParser:
 
     return config
 
-# DEAD CODE (previously used with read_csv)
+
+# FIXME: This function is not used anywhere. Should it be removed or can it be reused later?
+#  Was previously used in read_csv, but was removed when the function was refactored.
 def collect_columns_names(config: configparser.ConfigParser) -> list[str]:
     """Collect all columns names from a config file and return a list of column names."""
     columns = []
-    for key in config['ColumnNames']:
-        columns.append(config['ColumnNames'][key])
+    for key in config['SimpleColumns']:
+        columns.append(config['SimpleColumns'][key])
+    for key in config['ExtendedColumns']:
+        columns.append(config['ExtendedColumns'][key])
     return columns

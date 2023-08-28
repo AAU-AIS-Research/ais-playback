@@ -15,8 +15,8 @@ def _split_by_time(dataframe: pd.DataFrame) -> list[pd.DataFrame]:
     Args:
         dataframe: The dataframe to split.
     """
-    date_column = 'date'
-    time_column = 'time'
+    date_column = 'DATE'
+    time_column = 'TIME'
     df = dataframe
     df_lst = []
 
@@ -34,18 +34,18 @@ def _split_by_vessel(dataframe: pd.DataFrame, config: configparser.ConfigParser)
         dataframe: The dataframe to split.
         config: A configparser object containing the configuration.
     """
-    df = dataframe
-    vessel_mmsi = config['ColumnNames']['mmsi']
-    vessel_mmsi_list = df[vessel_mmsi].unique().tolist()
+    vessel_mmsi = config['SimpleColumns']['mmsi']
+    vessel_mmsi_list = dataframe[vessel_mmsi].unique().tolist()
 
-    df_splits = []
-    for group in df.groupby(vessel_mmsi):
-        df_splits.append(group[1])
+    dataframe_splits = []
+    for vessel in dataframe.groupby(vessel_mmsi):
+        dataframe_splits.append(vessel[1])
 
-    if len(df_splits) != len(vessel_mmsi_list):
+    # Check that the number of splits matches the number of unique vessels
+    if len(dataframe_splits) != len(vessel_mmsi_list):
         raise ValueError("The number of splits does not match the number of unique vessels")
 
-    return df_splits
+    return dataframe_splits
 
 
 def _split_timestamp_column(dataframe: pd.DataFrame, config: configparser.ConfigParser) -> pd.DataFrame:
@@ -55,13 +55,16 @@ def _split_timestamp_column(dataframe: pd.DataFrame, config: configparser.Config
         dataframe: The dataframe to split.
         config: A configparser object containing the configuration.
     """
-    temporal_column = config['ColumnNames']['timestamp']
+    timestamp_column = config['SimpleColumns']['timestamp']
     timestamp_format = config['DataSource']['timestamp-format']
 
-    dataframe['date'] = pd.to_datetime(dataframe[temporal_column], format=timestamp_format).dt.date
-    dataframe['time'] = pd.to_datetime(dataframe[temporal_column], format=timestamp_format).dt.time
+    # pandas.to_datetime is used to convert the timestamp column to a datetime object, where the accessor functions
+    # .dt.date and .dt.time are used to extract the date and time respectively.
+    dataframe['DATE'] = pd.to_datetime(dataframe[timestamp_column], format=timestamp_format).dt.date
+    dataframe['TIME'] = pd.to_datetime(dataframe[timestamp_column], format=timestamp_format).dt.time
 
-    dataframe.drop(columns=[temporal_column], inplace=True)
+    # Drop the original timestamp column
+    dataframe.drop(columns=[timestamp_column], inplace=True)
 
     return dataframe
 
@@ -105,10 +108,10 @@ def split(*, config_path: str, source_path: str, target_path: str, prune_to_date
         # Drop rows with missing values
         size_before = df.shape[0]
         df.dropna(subset=[
-            config['ColumnNames']['mmsi'],
-            config['ColumnNames']['timestamp'],
-            config['ColumnNames']['lat'],
-            config['ColumnNames']['long'],
+            config['SimpleColumns']['mmsi'],
+            config['SimpleColumns']['timestamp'],
+            config['SimpleColumns']['lat'],
+            config['SimpleColumns']['long'],
         ] ,inplace=True)
         size_after = df.shape[0]
         print(f'Dropped {size_before - size_after} rows with missing values for MMSI, timestamp, lat or long')
@@ -117,16 +120,17 @@ def split(*, config_path: str, source_path: str, target_path: str, prune_to_date
         _split_timestamp_column(df, config)
 
         # TODO: Make it so every column in the dataframe gets renamed (currently only simple columns are renamed)
-        # Rename columns to ensure consistent output
+        #  Since only simple columns are mandatory, some logic is needed to handle the renaming of complex columns
+        # Rename columns to ensure consistent output across all data sources.
         df.rename(columns={
-            config['ColumnNames']['mmsi']: 'MMSI',
-            config['ColumnNames']['imo']: 'IMO',
-            config['ColumnNames']['status']: 'nav_status',
-            config['ColumnNames']['sog']: 'SOG',
-            config['ColumnNames']['lat']: 'lat',
-            config['ColumnNames']['long']: 'long',
-            config['ColumnNames']['cog']: 'COG',
-            config['ColumnNames']['heading']: 'heading',
+            config['SimpleColumns']['mmsi']: 'MMSI',
+            config['SimpleColumns']['imo']: 'IMO',
+            config['SimpleColumns']['status']: 'STATUS',
+            config['SimpleColumns']['sog']: 'SOG',
+            config['SimpleColumns']['lat']: 'LAT',
+            config['SimpleColumns']['long']: 'LON',
+            config['SimpleColumns']['cog']: 'COG',
+            config['SimpleColumns']['heading']: 'HEADING',
         }, inplace=True)
 
         # Ensure target path exists, create it if it does not.
@@ -134,9 +138,10 @@ def split(*, config_path: str, source_path: str, target_path: str, prune_to_date
             os.makedirs(target_path)
 
         # Split by date then vessel
-        vessel_mmsi = config['ColumnNames']['mmsi']
+        vessel_mmsi = config['SimpleColumns']['mmsi']
         for dataframe_date in _split_by_time(df):
-            date = dataframe_date['date'].iloc[0]
+            # Get datetime object
+            date = dataframe_date['DATE'].iloc[0]
 
             # If date is before or after prune_to_date, skip
             if prune_to_date is not None and date != prune_to_date:

@@ -5,6 +5,7 @@ import os
 import warnings
 
 
+# FIXME: Low priority. Annotate this function with proper type hints.
 def timeit(func, name: str = None):  # noqa: ANN001,ANN201
     """Execute a given function and prints the time it took the function to execute.
 
@@ -42,13 +43,15 @@ def collect_files(path: str, filetype: str) -> list[str]:
 
     Args:
         path: The path to collect files from.
-        config: A configparser object containing the configuration.
+        filetype: The filetype to collect. Must be a string, e.g. 'csv' or 'txt'.
     """
     if os.path.isdir(path):
         return [os.path.join(path, file) for file in os.listdir(path) if file.endswith(filetype)]
     elif os.path.isfile(path):
         return [path if path.endswith(filetype) else None]
     else:
+        # FIXME: Ask Torp. Should this raise an exception instead? Returning and empty list allows the program to
+        #  continue, but it might be better to raise an exception and stop the program.
         warnings.warn(f'Path {path} is not a file or a directory', UserWarning, stacklevel=2)
         return []
 
