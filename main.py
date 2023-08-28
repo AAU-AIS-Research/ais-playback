@@ -6,7 +6,7 @@ from playback.module import playback
 
 
 def split_dma_folder():
-    # Split the AIS data from the Danish Maritime Authority
+    """Split the AIS data from the Danish Maritime Authority"""
     split(
         config_path='C:/Projects/ais-playback/config_examples/danish_marine_authority.ini',
         source_path='C:/Project Data/AIS/DMA 2023-08-12 to 2023-08-14',
@@ -14,7 +14,7 @@ def split_dma_folder():
 
 
 def split_ma_folder():
-    # Split the AIS data from the Marine Cadastre.
+    """Split the AIS data from the Marine Cadastre."""
     split(
         config_path='C:/Projects/ais-playback/config_examples/marine_cadastre.ini',
         source_path='C:/Project Data/AIS/MA/AIS_2023_01_01.csv',
@@ -22,7 +22,7 @@ def split_ma_folder():
 
 
 def playback_single_file():
-    # Playback a single file
+    """Playback of a single file"""
     playback(
         source_path='C:/Project Data/AIS/Split/MA/2023-01-01/368396216.csv',
         speed=600, # 10 minutes per second

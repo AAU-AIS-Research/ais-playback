@@ -119,7 +119,7 @@ def split(*, config_path: str, source_path: str, target_path: str, prune_to_date
         # Split timestamp column into date and time
         _split_timestamp_column(df, config)
 
-        # TODO: Make it so every column in the dataframe gets renamed (currently only simple columns are renamed)
+        # TODO (Future): Make it so every column in the dataframe gets renamed (currently only simple columns are renamed)
         #  Since only simple columns are mandatory, some logic is needed to handle the renaming of complex columns
         # Rename columns to ensure consistent output across all data sources.
         df.rename(columns={
