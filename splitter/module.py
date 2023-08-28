@@ -100,29 +100,30 @@ def split(*, config_path: str, source_path: str, target_path: str, prune_to_date
         print(f'Attempting to split file {current_file_number} of {number_of_files}: {file_name} at {datetime.now()}')
 
         start_time_read = perf_counter()
-        df = read_csv(file, config)
+        dataframe = read_csv(file, config)
 
         print(f'File {file_name} read successfully in '
               f'{timedelta(seconds=(perf_counter() - start_time_read))} at {datetime.now()}')
 
         # Drop rows with missing values
-        size_before = df.shape[0]
-        df.dropna(subset=[
+        size_before = dataframe.shape[0]
+        dataframe.dropna(subset=[
             config['SimpleColumns']['mmsi'],
             config['SimpleColumns']['timestamp'],
             config['SimpleColumns']['lat'],
             config['SimpleColumns']['long'],
-        ] ,inplace=True)
-        size_after = df.shape[0]
+        ], inplace=True)
+        size_after = dataframe.shape[0]
         print(f'Dropped {size_before - size_after} rows with missing values for MMSI, timestamp, lat or long')
 
         # Split timestamp column into date and time
-        _split_timestamp_column(df, config)
+        _split_timestamp_column(dataframe, config)
 
-        # TODO (Future): Make it so every column in the dataframe gets renamed (currently only simple columns are renamed)
-        #  Since only simple columns are mandatory, some logic is needed to handle the renaming of complex columns
+        # TODO (Future, Medium):
+        #  Make it so every column in the dataframe gets renamed (only simple columns are renamed)
+        #  Since only simple columns are mandatory, some logic is needed to handle the renaming of other columns
         # Rename columns to ensure consistent output across all data sources.
-        df.rename(columns={
+        dataframe.rename(columns={
             config['SimpleColumns']['mmsi']: 'MMSI',
             config['SimpleColumns']['imo']: 'IMO',
             config['SimpleColumns']['status']: 'STATUS',
@@ -139,7 +140,7 @@ def split(*, config_path: str, source_path: str, target_path: str, prune_to_date
 
         # Split by date then vessel
         vessel_mmsi = config['SimpleColumns']['mmsi']
-        for dataframe_date in _split_by_time(df):
+        for dataframe_date in _split_by_time(dataframe):
             # Get datetime object
             date = dataframe_date['DATE'].iloc[0]
 

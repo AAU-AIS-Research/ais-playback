@@ -5,7 +5,8 @@ import os
 import warnings
 
 
-# FIXME: Low priority. Annotate this function with proper type hints.
+# FIXME (Low Priority, Large):
+#  Annotate this function with proper type hints.
 def timeit(func, name: str = None):  # noqa: ANN001,ANN201
     """Execute a given function and prints the time it took the function to execute.
 
@@ -50,8 +51,8 @@ def collect_files(path: str, filetype: str) -> list[str]:
     elif os.path.isfile(path):
         return [path if path.endswith(filetype) else None]
     else:
-        # FIXME: Ask Torp. Should this raise an exception instead? Returning and empty list allows the program to
-        #  continue, but it might be better to raise an exception and stop the program.
+        # TODO (Low priority, Medium):
+        #  Reevaluate. Raise exception instead of warning?
         warnings.warn(f'Path {path} is not a file or a directory', UserWarning, stacklevel=2)
         return []
 

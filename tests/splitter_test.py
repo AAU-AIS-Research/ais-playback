@@ -10,9 +10,9 @@ test_data = os.path.join(test_folder, 'data')
 test_temp = os.path.join(test_folder, 'data/temp')
 test_config = os.path.join(test_folder, 'data/split_config.ini')
 
+
 def clear_temp_folder():
     """Clear the temp folder."""
-    #Check if folder is called temp
     if os.path.basename(test_temp) == 'temp':
         for dir in os.listdir(test_temp):
             dir_path = os.path.join(test_temp, dir)
@@ -24,17 +24,21 @@ def clear_temp_folder():
             else:
                 os.remove(dir_path)
 
+
 def number_of_files_in_folder(folder_path: str) -> int:
     """Return the number of files in a folder."""
     return len([name for name in os.listdir(folder_path) if os.path.isfile(os.path.join(folder_path, name))])
+
 
 def number_of_folders_in_folder(folder_path: str) -> int:
     """Return the number of folders in a folder."""
     return len([name for name in os.listdir(folder_path) if os.path.isdir(os.path.join(folder_path, name))])
 
+
 def file_exists(file_path: str) -> bool:
     """Return True if the file exists."""
     return os.path.isfile(file_path)
+
 
 def test_read_config():
     """Test the read_config function."""
@@ -59,9 +63,10 @@ def test_split():
     assert number_of_folders_in_folder(test_temp) == 2
     assert number_of_files_in_folder(os.path.join(test_temp, '2022-10-15')) == 1
     assert number_of_files_in_folder(os.path.join(test_temp, '2022-10-16')) == 2
-    assert file_exists(os.path.join(test_temp, '2022-10-15', '219000734.csv')) == True
-    assert file_exists(os.path.join(test_temp, '2022-10-16', '219000734.csv')) == True
-    assert file_exists(os.path.join(test_temp, '2022-10-16', '219000743.csv')) == True
+    assert file_exists(os.path.join(test_temp, '2022-10-15', '219000734.csv')) is True
+    assert file_exists(os.path.join(test_temp, '2022-10-16', '219000734.csv')) is True
+    assert file_exists(os.path.join(test_temp, '2022-10-16', '219000743.csv')) is True
+
 
 def test_split_with_pruning():
     """Test the split function with pruning."""
@@ -74,8 +79,8 @@ def test_split_with_pruning():
     )
     assert number_of_folders_in_folder(test_temp) == 1
     assert number_of_files_in_folder(os.path.join(test_temp, '2022-10-16')) == 2
-    assert file_exists(os.path.join(test_temp, '2022-10-16', '219000734.csv')) == True
-    assert file_exists(os.path.join(test_temp, '2022-10-16', '219000743.csv')) == True
+    assert file_exists(os.path.join(test_temp, '2022-10-16', '219000734.csv')) is True
+    assert file_exists(os.path.join(test_temp, '2022-10-16', '219000743.csv')) is True
 
     clear_temp_folder()
     split(
@@ -86,4 +91,4 @@ def test_split_with_pruning():
     )
     assert number_of_folders_in_folder(test_temp) == 1
     assert number_of_files_in_folder(os.path.join(test_temp, '2022-10-15')) == 1
-    assert file_exists(os.path.join(test_temp, '2022-10-15', '219000734.csv')) == True
+    assert file_exists(os.path.join(test_temp, '2022-10-15', '219000734.csv')) is True
