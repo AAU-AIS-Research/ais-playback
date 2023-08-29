@@ -4,8 +4,6 @@ import pandas as pd
 import datetime
 
 
-# TODO (Future, Large):
-#  Find better parameter name than subset, implement it and test it. Maybe use key value pairs?
 def playback(*, source_path: str, speed: int, subset: list[str | int] = None,
              start_time: datetime.time = datetime.time.min, stop_time: datetime.time = datetime.time.max) -> None:
     """Play back AIS data from files.
@@ -23,13 +21,9 @@ def playback(*, source_path: str, speed: int, subset: list[str | int] = None,
 
     files = collect_files(source_path, 'csv')
 
-    # TODO (High Priority, Long):
-    #  Refactor the following code so that it collects vessels and plays back multiple vessels at a time.
     for file in files:
         print(f'Playing back file: {file}')
 
-        # TODO (High Priority, Small):
-        #  Reorder so it mimics the order of the columns on the MarineTraffic website more closely.
         cols_to_read = ['MMSI', 'IMO', 'STATUS', 'SOG', 'LON', 'LAT', 'COG', 'HEADING', 'DATE', 'TIME']
         dataframe = pd.read_csv(file, encoding='utf-8', sep='|', usecols=cols_to_read)
 

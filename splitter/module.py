@@ -1,7 +1,7 @@
 """Module for splitting AIS data into files by vessel by day."""
 import pandas as pd
 import os
-from splitter.helper_functions import read_csv, read_config
+from splitter.read import read_csv, read_config
 from main_helper import collect_files
 import configparser
 
@@ -119,9 +119,6 @@ def split(*, config_path: str, source_path: str, target_path: str, prune_to_date
         # Split timestamp column into date and time
         _split_timestamp_column(dataframe, config)
 
-        # TODO (Future, Medium):
-        #  Make it so every column in the dataframe gets renamed (only simple columns are renamed)
-        #  Since only simple columns are mandatory, some logic is needed to handle the renaming of other columns
         # Rename columns to ensure consistent output across all data sources.
         dataframe.rename(columns={
             config['SimpleColumns']['mmsi']: 'MMSI',

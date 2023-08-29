@@ -1,4 +1,4 @@
-from splitter.helper_functions import read_csv, read_config
+from splitter.read import read_csv, read_config
 from splitter.module import split
 import datetime
 import pandas as pd
