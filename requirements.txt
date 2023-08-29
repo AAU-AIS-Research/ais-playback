@@ -1,7 +1,7 @@
 pandas==2.0.3
 pytest==7.4.0
 
-# flake8 for linting
+# flake8 to enforce code style
 flake8==6.1.0
 flake8-docstrings==1.7.0
 flake8-annotations===3.0.1

@@ -1,8 +1,7 @@
 """Main file for the AIS playback project."""
 import datetime
-
-from splitter.module import split
-from playback.module import playback
+from playback import playback
+from splitter import split
 
 
 def split_dma_folder() -> None:
@@ -24,16 +23,27 @@ def split_ma_folder() -> None:
 def playback_single_file() -> None:
     """Playback of a single file."""
     playback(
-        source_path='C:/Project Data/AIS/Split/MA/2023-01-01/368396216.csv',
+        source_path='C:/Project Data/AIS/Split/DMA 1 Week/2023-08-02/219004616.csv',
         speed=600,  # 10 minutes per second
-        start_time=datetime.time(hour=0, minute=0, second=0),
+        start_time=datetime.time(hour=11, minute=0, second=0),
+        stop_time=datetime.time(hour=12, minute=0, second=0)
+        )
+
+
+def playback_multiple_files() -> None:
+    """Playback of multiple files."""
+    playback(
+        source_path='C:/Project Data/AIS/Split/DMA 1 Week/2023-08-02',
+        speed=1,  # 1 second per second
+        start_time=datetime.time(hour=11, minute=59, second=50),
         stop_time=datetime.time(hour=12, minute=0, second=0)
         )
 
 
 if __name__ == '__main__':
 
-    split_dma_folder()
-    split_ma_folder()
+    #split_dma_folder()
+    #split_ma_folder()
 
     playback_single_file()
+    playback_multiple_files()

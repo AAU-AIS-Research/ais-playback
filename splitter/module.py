@@ -169,7 +169,7 @@ def split(*, config_path: str, source_path: str, target_path: str, prune_to_date
                   f'{timedelta(seconds=(perf_counter() - start_time_date))} at {datetime.now()}')
 
         print(f'File {file_name} split successfully in '
-              f'{timedelta(seconds=(perf_counter() - start_time_file))} at {datetime.now()}')
+              f'{timedelta(seconds=(perf_counter() - start_time_file))} at {datetime.now()} \n')
 
     print(f'Splitting AIS data using config: {config_name} completed successfully in '
           f'{timedelta(seconds=(perf_counter() - total_start_time))} at {datetime.now()}')
