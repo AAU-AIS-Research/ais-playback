@@ -1,12 +1,12 @@
 """Module for playing back AIS data from files."""
 from main_helper import collect_files
 import pandas as pd
-import datetime
+from datetime import datetime, timedelta, time
 from time import perf_counter, sleep
 
 
 def playback(*, source_path: str, speed: int, subset: list[str | int] = None,
-             start_time: datetime.time = datetime.time.min, stop_time: datetime.time = datetime.time.max) -> None:
+             start_time: datetime.time = time.min, stop_time: datetime.time = time.max) -> None:
     """Play back AIS data from files.
 
     Args:
@@ -17,7 +17,7 @@ def playback(*, source_path: str, speed: int, subset: list[str | int] = None,
         start_time: The time to start playback. (default: 00:00:00)
         stop_time: The time to stop playback. (default: 23:59:59)
     """
-    print(f'Playing back AIS data at {datetime.datetime.now()}')
+    print(f'Playing back AIS data at {datetime.now()}')
     print(f'Source path: {source_path}')
     print('Preprocessing data...')
 
@@ -33,7 +33,7 @@ def playback(*, source_path: str, speed: int, subset: list[str | int] = None,
     dataframe = dataframe[
         (dataframe['TIMESTAMP'].dt.time >= start_time) & (dataframe['TIMESTAMP'].dt.time <= stop_time)]
 
-    print(f'Preprocessing complete in {perf_counter() - prepossessing_start_time} seconds at {datetime.datetime.now()}')
+    print(f'Preprocessing complete in {perf_counter() - prepossessing_start_time} seconds at {datetime.now()}')
     print(f'Playing back data at {speed}x speed from {start_time} to {stop_time}...')
 
     for time_group, dataframe_group in dataframe.groupby(pd.Grouper(key='TIMESTAMP', freq=f'{speed}S')):
@@ -53,7 +53,7 @@ def _concat_files_to_dataframe(files: list[str]) -> pd.DataFrame:
     Args:
         files: A list of file paths to concatenate.
     """
-    print(f'Concatenating files at {datetime.datetime.now()}')
+    print(f'Concatenating files at {datetime.now()}')
 
     if not files:
         raise ValueError('No files found to concatenate.')
@@ -87,8 +87,7 @@ def _concat_files_to_dataframe(files: list[str]) -> pd.DataFrame:
         dataframe_list.append(dataframe)
 
     dataframe = pd.concat(dataframe_list)
-    collect_stop_time = perf_counter()
 
-    print(f'Concatenated files in {collect_stop_time - collect_start_time} seconds at {datetime.datetime.now()}')
+    print(f'Concatenated files in {timedelta(seconds=(perf_counter() - collect_start_time))} at {datetime.now()}')
 
     return dataframe
