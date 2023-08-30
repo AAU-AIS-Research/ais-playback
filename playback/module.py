@@ -33,7 +33,7 @@ def playback(*, source_path: str, speed: int, subset: list[str | int] = None,
     dataframe = dataframe[
         (dataframe['TIMESTAMP'].dt.time >= start_time) & (dataframe['TIMESTAMP'].dt.time <= stop_time)]
 
-    print(f'Preprocessing complete in {perf_counter() - prepossessing_start_time} seconds at {datetime.now()}')
+    print(f'Preprocessing complete in {timedelta(seconds=perf_counter() - prepossessing_start_time)} at {datetime.now()}')
     print(f'Playing back data at {speed}x speed from {start_time} to {stop_time}...')
 
     for time_group, dataframe_group in dataframe.groupby(pd.Grouper(key='TIMESTAMP', freq=f'{speed}S')):

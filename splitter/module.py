@@ -131,6 +131,28 @@ def split(*, config_path: str, source_path: str, target_path: str, prune_to_date
             config['SimpleColumns']['heading']: 'HEADING',
         }, inplace=True)
 
+
+        if config.has_section('ExtendedColumns'):
+            dataframe.rename(columns={
+                config['ExtendedColumns']['ship-name']: 'SHIPNAME',
+                config['ExtendedColumns']['callsign']: 'CALLSIGN',
+                config['ExtendedColumns']['mobile-type']: 'MOBILE TYPE',
+                config['ExtendedColumns']['ship-type']: 'SHIP TYPE',
+                config['ExtendedColumns']['cargo-type']: 'CARGO TYPE',
+                config['ExtendedColumns']['device-type']: 'TRANSPONDER TYPE',
+                config['ExtendedColumns']['width']: 'WIDTH',
+                config['ExtendedColumns']['length']: 'LENGTH',
+                config['ExtendedColumns']['draught']: 'DRAUGHT',
+                config['ExtendedColumns']['destination']: 'DESTINATION',
+                config['ExtendedColumns']['data-source']: 'DATA SOURCE',
+                config['ExtendedColumns']['eta']: 'ETA',
+                config['ExtendedColumns']['a']: 'A',
+                config['ExtendedColumns']['b']: 'B',
+                config['ExtendedColumns']['c']: 'C',
+                config['ExtendedColumns']['d']: 'D'
+            }, inplace=True)
+
+
         # Ensure target path exists, create it if it does not.
         if not os.path.exists(target_path):
             os.makedirs(target_path)

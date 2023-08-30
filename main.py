@@ -9,7 +9,7 @@ def split_dma_folder() -> None:
     split(
         config_path='C:/Projects/ais-playback/config_examples/danish_marine_authority.ini',
         source_path='C:/Project Data/AIS/DMA 2023-08-01 to 2023-08-07',
-        target_path='C:/Project Data/AIS/Split/DMA 1 Week')
+        target_path='C:/Project Data/AIS/Split/DMA 1 Week (New Header)')
 
 
 def split_ma_folder() -> None:
@@ -42,7 +42,7 @@ def playback_multiple_files() -> None:
 
 if __name__ == '__main__':
 
-    #split_dma_folder()
+    split_dma_folder()
     #split_ma_folder()
 
     playback_single_file()
