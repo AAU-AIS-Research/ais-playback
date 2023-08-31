@@ -35,15 +35,16 @@ def playback_multiple_files() -> None:
     playback(
         source_path='C:/Project Data/AIS/Split/DMA 1 Week/2023-08-02',
         speed=1,  # 1 second per second
-        start_time=datetime.time(hour=11, minute=59, second=50),
-        stop_time=datetime.time(hour=12, minute=0, second=0)
+        #start_time=datetime.time(hour=11, minute=59, second=50),
+        #stop_time=datetime.time(hour=12, minute=0, second=0),
+        prepro_path='C:/Project Data/AIS/Preprocessed Playback Data/DMA 1 Week'
         )
 
 
 if __name__ == '__main__':
 
-    split_dma_folder()
+    #split_dma_folder()
     #split_ma_folder()
 
-    playback_single_file()
+    #playback_single_file()
     playback_multiple_files()
