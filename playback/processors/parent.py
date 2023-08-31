@@ -4,13 +4,14 @@ from abc import ABC, abstractmethod
 
 
 class AbstractPlaybackProcessor(ABC):
-    """"""
+    """Abstract parent class for all playback processors."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialise the processor."""
 
-    def process_begun(self) -> None:
-        """Run when the processing begins.
+    def playback_begun(self) -> None:
+        """Run when the playback begins.
+
         For example, this could be used to initialise a plot.
         """
         pass
@@ -18,12 +19,14 @@ class AbstractPlaybackProcessor(ABC):
     @abstractmethod
     def process_playback(self, data: pd.DataFrame) -> None:
         """Run each time a new dataframe is processed during playback.
+
         For example, this could be used to update a plot.
         """
         raise NotImplementedError('process_data not implemented.')
 
-    def process_ended(self) -> None:
-        """Run when the processing ends.
+    def playback_ended(self) -> None:
+        """Run when the playback ends.
+
         For example, this could be used to save a plot.
         """
         pass

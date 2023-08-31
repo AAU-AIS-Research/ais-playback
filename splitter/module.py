@@ -131,7 +131,6 @@ def split(*, config_path: str, source_path: str, target_path: str, prune_to_date
             config['SimpleColumns']['heading']: 'HEADING',
         }, inplace=True)
 
-
         if config.has_section('ExtendedColumns'):
             dataframe.rename(columns={
                 config['ExtendedColumns']['ship-name']: 'SHIPNAME',
@@ -151,7 +150,6 @@ def split(*, config_path: str, source_path: str, target_path: str, prune_to_date
                 config['ExtendedColumns']['c']: 'C',
                 config['ExtendedColumns']['d']: 'D'
             }, inplace=True)
-
 
         # Ensure target path exists, create it if it does not.
         if not os.path.exists(target_path):

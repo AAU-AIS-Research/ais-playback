@@ -37,28 +37,35 @@ def playback(*,
     if speed < 1 or speed > 900:
         raise ValueError('Speed must be between 1 and 900.')
 
+    # Logic for loading preprocessed data, or preprocessing the data if it has not already been preprocessed.
     if prepro_path is None:
+        print('No preprocessed data path given. Preprocessing data...')
         dataframe = _preprocessing_playback(source_path, start_time, stop_time)
     elif os.path.isdir(prepro_path):
+        # If the prepro_path is a folder, the preprocessed data will be saved to the folder with the same name as the
+        # source file or folder. Therefore, a check is made to see if the preprocessed data already exists.
         prepro_path = os.path.join(prepro_path, os.path.basename(source_path))
         if os.path.isfile(prepro_path + '.parquet'):
             print(f'Found preprocessed data at {prepro_path}. Loading...')
             dataframe = pd.read_parquet(prepro_path + '.parquet')
         else:
+            print(f'No preprocessed data found at {prepro_path}. Preprocessing data...')
             dataframe = _preprocessing_playback(source_path, start_time, stop_time, prepro_path)
     else:
+        # Ensure that the prepro_path ends with .parquet
         prepro_path = prepro_path + '.parquet' if prepro_path and not prepro_path.endswith('.parquet') else prepro_path
         if os.path.isfile(prepro_path):
             print(f'Found preprocessed data at {prepro_path}. Loading...')
             dataframe = pd.read_parquet(prepro_path)
         else:
+            print(f'No preprocessed data found at {prepro_path}. Preprocessing data...')
             dataframe = _preprocessing_playback(source_path, start_time, stop_time, prepro_path)
 
     print(f'Playing back data at {speed}x speed from {start_time} to {stop_time}...')
 
     data_processor = processor()
 
-    data_processor.process_begun()
+    data_processor.playback_begun()
     for time_group, dataframe_group in dataframe.groupby(pd.Grouper(key='TIMESTAMP', freq=f'{speed}S')):
         print(f'Printing group: {time_group} at speed {speed}x')
 
@@ -69,7 +76,7 @@ def playback(*,
             data_processor.process_playback(dataframe_group)
 
         sleep(1)
-    data_processor.process_ended()
+    data_processor.playback_ended()
 
 
 def _preprocessing_playback(
@@ -78,16 +85,16 @@ def _preprocessing_playback(
         stop_time: datetime.time,
         save_path: str = None
 ) -> pd.DataFrame:
-    """Preprocess the AIS data for playback. This includes concatenating files, sorting by timestamp,
-    and pruning to a time interval.
+    """Preprocess the AIS data for playback.
+
+    This includes concatenating files, sorting by timestamp, and pruning to a time interval.
 
     Args:
         source_path: The path to the source data. If a folder, all files in the folder will be preprocessed.
         start_time: The beginning of the time interval to prune to.
         stop_time: The end of the time interval to prune to.
         save_path: The path to save the preprocessed data to. If None, the data will not be saved. (default: None)
-        """
-
+    """
     print('Preprocessing data...')
 
     prepossessing_start_time = perf_counter()
@@ -160,5 +167,3 @@ def _concat_files_to_dataframe(files: list[str]) -> pd.DataFrame:
     print(f'Concatenated files in {timedelta(seconds=(perf_counter() - collect_start_time))} at {datetime.now()}')
 
     return dataframe
-
-

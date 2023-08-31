@@ -1,5 +1,6 @@
 [flake8]
 exclude = .git,__pycache__,venv,.venv
+ignore = ANN101
 max-complexity=5
 max-line-length=120
 per-file-ignores = ./tests/**:D103,D100,ANN201
