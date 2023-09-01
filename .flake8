@@ -1,6 +1,9 @@
 [flake8]
 exclude = .git,__pycache__,venv,.venv
-ignore = ANN101
 max-complexity=5
 max-line-length=120
 per-file-ignores = ./tests/**:D103,D100,ANN201
+
+ignore = ANN101
+# ANN101: Missing type annotation for self in method
+# Cause for ignore: It's generally recommended to not annotate self in methods as the type checker will infer it, also makes the code less readable and refactoring harder.

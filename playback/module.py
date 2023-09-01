@@ -73,7 +73,7 @@ def playback(*,
             # Reset the index to start at 0, else it will continue from the previous group.
             dataframe_group.reset_index(inplace=True, drop=True)
 
-            data_processor.process_playback(dataframe_group)
+            data_processor.playback_process_dataframe(dataframe_group)
 
         sleep(1)
     data_processor.playback_ended()

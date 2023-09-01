@@ -17,7 +17,7 @@ class AbstractPlaybackProcessor(ABC):
         pass
 
     @abstractmethod
-    def process_playback(self, data: pd.DataFrame) -> None:
+    def playback_process_dataframe(self, data: pd.DataFrame) -> None:
         """Run each time a new dataframe is processed during playback.
 
         For example, this could be used to update a plot.
