@@ -14,7 +14,8 @@ def playback(*,
              speed: int,
              subset: list[str | int] = None,  # Not used yet
              start_time: datetime.time = time.min, stop_time: datetime.time = time.max,
-             processor: type[AbstractPlaybackProcessor] = Printer,
+             processor: AbstractPlaybackProcessor = Printer(),
+             no_sleep: bool = False
              ) -> None:
     """Play back AIS data from files.
 
@@ -30,6 +31,7 @@ def playback(*,
         start_time: The time to start playback. (default: 00:00:00)
         stop_time: The time to stop playback. (default: 23:59:59)
         processor: The processor class to use for processing the data. (default: Printer)
+        no_sleep: If True, the playback will not sleep between emitting groups. (default: False)
     """
     print(f'Playing back AIS data at {datetime.now()}')
     print(f'Source path: {source_path}')
@@ -63,20 +65,21 @@ def playback(*,
 
     print(f'Playing back data at {speed}x speed from {start_time} to {stop_time}...')
 
-    data_processor = processor()
+    playback_processor = processor
 
-    data_processor.playback_begun()
+    playback_processor.playback_begun()
     for time_group, dataframe_group in dataframe.groupby(pd.Grouper(key='TIMESTAMP', freq=f'{speed}S')):
-        print(f'Printing group: {time_group} at speed {speed}x')
+        print(f'Emitting group: {time_group} at speed {speed}x')
 
         if not dataframe_group.empty:
             # Reset the index to start at 0, else it will continue from the previous group.
             dataframe_group.reset_index(inplace=True, drop=True)
 
-            data_processor.playback_process_dataframe(dataframe_group)
+            playback_processor.playback_process_dataframe(dataframe_group)
 
-        sleep(1)
-    data_processor.playback_ended()
+        if not no_sleep:
+            sleep(1)
+    playback_processor.playback_ended()
 
 
 def _preprocessing_playback(
@@ -91,8 +94,8 @@ def _preprocessing_playback(
 
     Args:
         source_path: The path to the source data. If a folder, all files in the folder will be preprocessed.
-        start_time: The beginning of the time interval to prune to.
-        stop_time: The end of the time interval to prune to.
+        start_time: The beginning of the time interval to prune to (inclusive).
+        stop_time: The end of the time interval to prune to (inclusive).
         save_path: The path to save the preprocessed data to. If None, the data will not be saved. (default: None)
     """
     print('Preprocessing data...')
@@ -106,9 +109,9 @@ def _preprocessing_playback(
     dataframe = dataframe.sort_values(by=['TIMESTAMP'])
 
     print(f'Pruning data to be within {start_time} and {stop_time}...')
-
-    dataframe = dataframe[
-        (dataframe['TIMESTAMP'].dt.time >= start_time) & (dataframe['TIMESTAMP'].dt.time <= stop_time)]
+    dataframe = dataframe.set_index('TIMESTAMP')
+    dataframe = dataframe.between_time(start_time, stop_time)
+    dataframe = dataframe.reset_index()
 
     print(f'Preprocessing complete in {timedelta(seconds=perf_counter() - prepossessing_start_time)} '
           f'at {datetime.now()}')

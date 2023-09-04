@@ -4,7 +4,7 @@ from abc import ABC, abstractmethod
 
 
 class AbstractPlaybackProcessor(ABC):
-    """Abstract parent class for all playback processors."""
+    """Abstract superclass for all playback processors."""
 
     def __init__(self) -> None:
         """Initialise the processor."""
@@ -12,7 +12,7 @@ class AbstractPlaybackProcessor(ABC):
     def playback_begun(self) -> None:
         """Run when the playback begins.
 
-        For example, this could be used to initialise a plot.
+        For example, this could be used to record the time the playback began.
         """
         pass
 
@@ -22,7 +22,7 @@ class AbstractPlaybackProcessor(ABC):
 
         For example, this could be used to update a plot.
         """
-        raise NotImplementedError('process_data not implemented.')
+        raise NotImplementedError('playback_process_dataframe not implemented.')
 
     def playback_ended(self) -> None:
         """Run when the playback ends.

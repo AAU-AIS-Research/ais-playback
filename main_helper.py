@@ -53,7 +53,7 @@ def collect_files(path: str, filetype: str) -> list[str]:
         return []
 
 
-def print_lines(file_name: str, number_of_lines: int = 5) -> None:
+def print_lines_from_file(file_name: str, number_of_lines: int = 5) -> None:
     """Print the first n lines of a file.
 
     Args:
@@ -63,3 +63,13 @@ def print_lines(file_name: str, number_of_lines: int = 5) -> None:
     with open(file_name, 'r') as f:
         for i in range(number_of_lines):
             print(f.readline().strip())
+
+
+def largest_file_in_folder(folder_path: str) -> str:
+    """Find the largest file in a folder.
+
+    Args:
+        folder_path: The path to the folder to search.
+    """
+    files = [os.path.join(folder_path, file) for file in os.listdir(folder_path)]
+    return max(files, key=os.path.getsize)
