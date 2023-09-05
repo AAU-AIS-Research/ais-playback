@@ -10,7 +10,7 @@ def split_dma_folder() -> None:
     split(
         config_path='C:/Projects/ais-playback/config_examples/danish_marine_authority.ini',
         source_path='C:/Project Data/AIS/DMA 2023-08-01 to 2023-08-07',
-        target_path='C:/Project Data/AIS/Split/DMA 1 Week (New Header)'
+        target_path='C:/Project Data/AIS/Split/DMA 1 Week'
     )
 
 
@@ -53,7 +53,7 @@ def playback_with_map_plotter_single() -> None:
     map_target = "C:/Project Data/AIS/Maps/Vessel 219023785 - 2023-08-02"
 
     MP = MapPlotter(
-        target_path=map_target)
+        target_folder=map_target)
 
     playback(
         source_path='C:/Project Data/AIS/Split/DMA 1 Week/2023-08-02/219023785.csv',
@@ -68,7 +68,7 @@ def playback_with_map_plotter_multiple() -> None:
     map_target = "C:/Project Data/AIS/Maps/Day 2023-08-02"
 
     MP = MapPlotter(
-        target_path=map_target)
+        target_folder=map_target)
 
     playback(
         source_path='C:/Project Data/AIS/Split/DMA 1 Week/2023-08-02',
@@ -82,7 +82,6 @@ def playback_with_map_plotter_multiple() -> None:
 if __name__ == '__main__':
 
     split_dma_folder()
-    split_ma_folder()
 
     playback_single_file()
     playback_multiple_files()

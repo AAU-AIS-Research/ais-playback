@@ -66,7 +66,7 @@ def print_lines_from_file(file_name: str, number_of_lines: int = 5) -> None:
 
 
 def largest_file_in_folder(folder_path: str) -> str:
-    """Find the largest file in a folder.
+    """Find the path for the largest file in a folder.
 
     Args:
         folder_path: The path to the folder to search.

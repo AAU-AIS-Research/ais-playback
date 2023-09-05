@@ -9,7 +9,7 @@ class AbstractPlaybackProcessor(ABC):
     def __init__(self) -> None:
         """Initialise the processor."""
 
-    def playback_begun(self) -> None:
+    def begun(self) -> None:
         """Run when the playback begins.
 
         For example, this could be used to record the time the playback began.
@@ -17,14 +17,14 @@ class AbstractPlaybackProcessor(ABC):
         pass
 
     @abstractmethod
-    def playback_process_dataframe(self, data: pd.DataFrame) -> None:
+    def process(self, data: pd.DataFrame) -> None:
         """Run each time a new dataframe is processed during playback.
 
         For example, this could be used to update a plot.
         """
         raise NotImplementedError('playback_process_dataframe not implemented.')
 
-    def playback_ended(self) -> None:
+    def end(self) -> None:
         """Run when the playback ends.
 
         For example, this could be used to save a plot.

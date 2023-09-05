@@ -1,5 +1,5 @@
 """Module for playing back AIS data from files."""
-from main_helper import collect_files
+from helper_functions import collect_files
 import pandas as pd
 from datetime import datetime, timedelta, time
 from time import perf_counter, sleep
@@ -10,7 +10,7 @@ import os
 
 def playback(*,
              source_path: str,
-             prepro_path: str = None,
+             prepro_path: str | None = None,
              speed: int,
              subset: list[str | int] = None,  # Not used yet
              start_time: datetime.time = time.min, stop_time: datetime.time = time.max,
@@ -39,7 +39,43 @@ def playback(*,
     if speed < 1 or speed > 900:
         raise ValueError('Speed must be between 1 and 900.')
 
-    # Logic for loading preprocessed data, or preprocessing the data if it has not already been preprocessed.
+    dataframe = _preprocess_or_load(prepro_path, source_path, start_time, stop_time)
+
+    print(f'Playing back data at {speed}x speed from {start_time} to {stop_time}...')
+
+    playback_processor = processor
+
+    playback_processor.begun()
+    for time_group, dataframe_group in dataframe.groupby(pd.Grouper(key='TIMESTAMP', freq=f'{speed}S')):
+        print(f'Emitting group: {time_group} at speed {speed}x')
+
+        if not dataframe_group.empty:
+            # Reset the index to start at 0, else it will continue from the previous group.
+            dataframe_group.reset_index(inplace=True, drop=True)
+
+            playback_processor.process(dataframe_group)
+
+        sleep(1) if not no_sleep else None
+
+    playback_processor.end()
+
+
+def _preprocess_or_load(prepro_path: str | None,
+                        source_path: str,
+                        start_time: datetime.time,
+                        stop_time: datetime.time
+                        ) -> pd.DataFrame:
+    """Preprocess the data if it has not already been preprocessed, or load the preprocessed data if it has.
+
+    Args:
+        prepro_path: Defines both the path to load preprocessed data from and the path to save preprocessed data to
+        if the data has not already been preprocessed. If None, the data will not be saved.
+        If a folder, the preprocessed data will be saved to the folder with the same name as the source file or folder.
+        (default: None)
+        source_path: The path to the source data. If a folder, all files in the folder will be preprocessed.
+        start_time: The beginning of the time interval to prune to (inclusive).
+        stop_time: The end of the time interval to prune to (inclusive).
+    """
     if prepro_path is None:
         print('No preprocessed data path given. Preprocessing data...')
         dataframe = _preprocessing_playback(source_path, start_time, stop_time)
@@ -62,24 +98,7 @@ def playback(*,
         else:
             print(f'No preprocessed data found at {prepro_path}. Preprocessing data...')
             dataframe = _preprocessing_playback(source_path, start_time, stop_time, prepro_path)
-
-    print(f'Playing back data at {speed}x speed from {start_time} to {stop_time}...')
-
-    playback_processor = processor
-
-    playback_processor.playback_begun()
-    for time_group, dataframe_group in dataframe.groupby(pd.Grouper(key='TIMESTAMP', freq=f'{speed}S')):
-        print(f'Emitting group: {time_group} at speed {speed}x')
-
-        if not dataframe_group.empty:
-            # Reset the index to start at 0, else it will continue from the previous group.
-            dataframe_group.reset_index(inplace=True, drop=True)
-
-            playback_processor.playback_process_dataframe(dataframe_group)
-
-        if not no_sleep:
-            sleep(1)
-    playback_processor.playback_ended()
+    return dataframe
 
 
 def _preprocessing_playback(

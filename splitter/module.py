@@ -2,71 +2,11 @@
 import pandas as pd
 import os
 from splitter.read import read_csv, read_config
-from main_helper import collect_files
+from helper_functions import collect_files
 import configparser
 
 from datetime import datetime, timedelta
 from time import perf_counter
-
-
-def _split_by_time(dataframe: pd.DataFrame) -> list[pd.DataFrame]:
-    """Split the AIS data by time.
-
-    Args:
-        dataframe: The dataframe to split.
-    """
-    date_column = 'DATE'
-    time_column = 'TIME'
-    df = dataframe
-    df_lst = []
-
-    df.sort_values(by=[date_column, time_column], inplace=True, ascending=True)
-    for group in df.groupby(date_column):
-        df_lst.append(group[1])
-
-    return df_lst
-
-
-def _split_by_vessel(dataframe: pd.DataFrame, config: configparser.ConfigParser) -> list[pd.DataFrame]:
-    """Split the AIS data by vessel.
-
-    Args:
-        dataframe: The dataframe to split.
-        config: A configparser object containing the configuration.
-    """
-    vessel_mmsi = config['SimpleColumns']['mmsi']
-    vessel_mmsi_list = dataframe[vessel_mmsi].unique().tolist()
-
-    dataframe_splits = []
-    for vessel in dataframe.groupby(vessel_mmsi):
-        dataframe_splits.append(vessel[1])
-
-    # Check that the number of splits matches the number of unique vessels
-    if len(dataframe_splits) != len(vessel_mmsi_list):
-        raise ValueError("The number of splits does not match the number of unique vessels")
-
-    return dataframe_splits
-
-
-def _split_timestamp_column(dataframe: pd.DataFrame, config: configparser.ConfigParser) -> pd.DataFrame:
-    """Split the datetime column into date and time columns.
-
-    Args:
-        dataframe: The dataframe to split.
-        config: A configparser object containing the configuration.
-    """
-    timestamp_column = config['SimpleColumns']['timestamp']
-    timestamp_format = config['DataSource']['timestamp-format']
-
-    # pandas.to_datetime is used to convert the timestamp column to a datetime object, where the accessor functions
-    # .dt.date and .dt.time are used to extract the date and time respectively.
-    dataframe['DATE'] = pd.to_datetime(dataframe[timestamp_column], format=timestamp_format).dt.date
-    dataframe['TIME'] = pd.to_datetime(dataframe[timestamp_column], format=timestamp_format).dt.time
-
-    # Drop the original timestamp column
-    dataframe.drop(columns=[timestamp_column], inplace=True)
-
-    return dataframe
 
 
 def split(*, config_path: str, source_path: str, target_path: str, prune_to_date: datetime.date = None) -> None:
@@ -155,41 +95,118 @@ def split(*, config_path: str, source_path: str, target_path: str, prune_to_date
         if not os.path.exists(target_path):
             os.makedirs(target_path)
 
-        # Split by date then vessel
-        vessel_mmsi = config['SimpleColumns']['mmsi']
-        for dataframe_date in _split_by_time(dataframe):
-            # Get datetime object
-            date = dataframe_date['DATE'].iloc[0]
-
-            # If date is before or after prune_to_date, skip
-            if prune_to_date is not None and date != prune_to_date:
-                continue
-
-            print(f'Splitting vessels for date {date} at {datetime.now()}')
-
-            start_time_date = perf_counter()
-
-            # Create date folder if it does not exist
-            if not os.path.exists(os.path.join(target_path, str(date))):
-                os.makedirs(os.path.join(target_path, str(date)))
-
-            # Split by vessel
-            for dataframe_vessel in _split_by_vessel(dataframe_date, config):
-                mmsi = int(dataframe_vessel[vessel_mmsi].iloc[0])
-
-                # Write to file
-                dataframe_vessel.to_csv(
-                    os.path.join(target_path, str(date), str(mmsi) + '.csv'),
-                    index=False,
-                    sep='|',
-                    encoding='utf-8',
-                    header=True)
-
-            print(f'Date {date} split successfully in '
-                  f'{timedelta(seconds=(perf_counter() - start_time_date))} at {datetime.now()}')
+        _split_by_date_by_vessel(config, dataframe, prune_to_date, target_path)
 
         print(f'File {file_name} split successfully in '
               f'{timedelta(seconds=(perf_counter() - start_time_file))} at {datetime.now()} \n')
 
     print(f'Splitting AIS data using config: {config_name} completed successfully in '
           f'{timedelta(seconds=(perf_counter() - total_start_time))} at {datetime.now()}')
+
+
+def _split_timestamp_column(dataframe: pd.DataFrame, config: configparser.ConfigParser) -> pd.DataFrame:
+    """Split the datetime column into date and time columns.
+
+    Args:
+        dataframe: The dataframe to split.
+        config: A configparser object containing the configuration.
+    """
+    timestamp_column = config['SimpleColumns']['timestamp']
+    timestamp_format = config['DataSource']['timestamp-format']
+
+    # pandas.to_datetime is used to convert the timestamp column to a datetime object, where the accessor functions
+    # .dt.date and .dt.time are used to extract the date and time respectively.
+    dataframe['DATE'] = pd.to_datetime(dataframe[timestamp_column], format=timestamp_format).dt.date
+    dataframe['TIME'] = pd.to_datetime(dataframe[timestamp_column], format=timestamp_format).dt.time
+
+    # Drop the original timestamp column
+    dataframe.drop(columns=[timestamp_column], inplace=True)
+
+    return dataframe
+
+
+def _split_by_date_by_vessel(config: configparser.ConfigParser,
+                             dataframe: pd.DataFrame,
+                             prune_to_date: datetime.date,
+                             target_path: str
+                             ) -> None:
+    """Split the AIS data by date and by vessel.
+
+    Args:
+        config: A configparser object containing the configuration.
+        dataframe: The dataframe to split.
+        prune_to_date: The date to prune the data to. If None, all data will be split. (default: None)
+        target_path: The path to save the split data to.
+    """
+    vessel_mmsi = config['SimpleColumns']['mmsi']
+
+    # Split by date
+    for dataframe_date in _split_by_time(dataframe):
+        # Get the earliest date in dataframe
+        date = dataframe_date['DATE'].iloc[0]
+
+        # If date is before or after prune_to_date, skip it
+        if prune_to_date is not None and date != prune_to_date:
+            continue
+
+        print(f'Splitting vessels for date {date} at {datetime.now()}')
+
+        start_time_date = perf_counter()
+
+        # Create date folder if it does not exist
+        if not os.path.exists(os.path.join(target_path, str(date))):
+            os.makedirs(os.path.join(target_path, str(date)))
+
+        # Split by vessel
+        for dataframe_vessel in _split_by_vessel(dataframe_date, config):
+            mmsi = int(dataframe_vessel[vessel_mmsi].iloc[0])
+
+            # Write to file
+            dataframe_vessel.to_csv(
+                os.path.join(target_path, str(date), str(mmsi) + '.csv'),
+                index=False,
+                sep='|',
+                encoding='utf-8',
+                header=True)
+
+        print(f'Date {date} split successfully in '
+              f'{timedelta(seconds=(perf_counter() - start_time_date))} at {datetime.now()}')
+
+
+def _split_by_time(dataframe: pd.DataFrame) -> list[pd.DataFrame]:
+    """Split the AIS data by time.
+
+    Args:
+        dataframe: The dataframe to split.
+    """
+    date_column = 'DATE'
+    time_column = 'TIME'
+    dataframe = dataframe
+    dataframe_list = []
+
+    dataframe.sort_values(by=[date_column, time_column], inplace=True, ascending=True)
+    for group in dataframe.groupby(date_column):
+        dataframe_list.append(group[1])
+
+    return dataframe_list
+
+
+def _split_by_vessel(dataframe: pd.DataFrame, config: configparser.ConfigParser) -> list[pd.DataFrame]:
+    """Split the AIS data by vessel.
+
+    Args:
+        dataframe: The dataframe to split.
+        config: A configparser object containing the configuration.
+    """
+    vessel_mmsi = config['SimpleColumns']['mmsi']
+    vessel_mmsi_list = dataframe[vessel_mmsi].unique().tolist()
+
+    dataframe_splits = []
+    for vessel in dataframe.groupby(vessel_mmsi):
+        dataframe_splits.append(vessel[1])
+
+    # Check that the number of splits matches the number of unique vessels
+    if len(dataframe_splits) != len(vessel_mmsi_list):
+        raise ValueError("The number of splits does not match the number of unique vessels")
+
+    return dataframe_splits

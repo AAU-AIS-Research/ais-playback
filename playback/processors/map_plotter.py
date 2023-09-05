@@ -11,29 +11,31 @@ from moviepy.editor import ImageSequenceClip
 class MapPlotter(AbstractPlaybackProcessor):
     """Processor responsible for printing each dataframe as they are processed during playback."""
 
-    def __init__(self, extent: tuple[int] = (5, 16, 52.8, 60), *, target_path: str) -> None:
-        """Initialise the processor."""
+    def __init__(self, extent: tuple[int] = (5, 16, 52.8, 60), *, target_folder: str) -> None:
+        if os.path.isfile(target_folder):
+            raise ValueError('target_folder must be a folder, not a file.')
+
         super().__init__()
-        self.save_path = target_path
+        self.save_path = target_folder
         self.loop_count = 0
 
-        "Initialise the plot."
+        # Initialise the plot.
         self.projection = ccrs.PlateCarree()
         self.map = plt.axes(projection=self.projection)
         self.map.set_extent(extent, crs=self.projection)
         self.map.add_image(cimgt.GoogleTiles(), 7)
 
-    def playback_begun(self) -> None:
+    def begun(self) -> None:
         """Reset the plot, so that it can be reused for the next playback.
 
         Also creates the save folder if it doesn't exist.
         """
-        self.__init__(target_path=self.save_path)
+        self.__init__(target_folder=self.save_path)
 
         if not os.path.exists(self.save_path):
             os.makedirs(self.save_path)
 
-    def playback_process_dataframe(self, dataframe: pd.DataFrame) -> None:
+    def process(self, dataframe: pd.DataFrame) -> None:
         """Update the plot with the new data, and save the plot."""
         self.loop_count += 1
 
@@ -41,7 +43,7 @@ class MapPlotter(AbstractPlaybackProcessor):
         plt.savefig(f'{self.save_path}/frame_{self.loop_count}.png', dpi=300)
         self.scatter.remove()
 
-    def playback_ended(self) -> None:
+    def end(self) -> None:
         """Collect all the plots and save them as a mp4."""
         print('Creating video...')
         image_folder = self.save_path
