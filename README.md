@@ -67,7 +67,7 @@ To run the modules, you need to call the appropriate function.
 ### Splitter
 The splitter module can be run by calling the `split` function.
 
-It has 3 parameters:
+It has 4 parameters:
 * `config_path`: The path to the config file
 * `source_path`: The path to the source folder or file
 * `target_path`: The path to the target folder
@@ -89,7 +89,7 @@ The playback module can be run by calling the `playback` function.
 
 NOTE: The playback module is still rough and does not yet conform to the MarineTime format. 
 
-It has 5 parameters:
+It has 6 parameters:
 * `source_path`: The path to the source file to playback
 * `prepro_path`: The path to store and load the preprocessed data, making future runs faster. Optional, defaults to `None` 
 * `speed`: The speed to play back the data. 1 is real time, 2 is twice as fast, etc. Must be between 1 and 900.
