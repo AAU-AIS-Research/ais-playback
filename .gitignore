@@ -1,8 +1,11 @@
-#temporary files
+# Temporary files
 tests/data/temp/*
 
-#Local config files
+# Local config files
 config_examples/local_*
+
+# Requirement Specification
+specification.yaml
 
 # .idea but not runConfigurations
 .idea/*
@@ -10,6 +13,6 @@ config_examples/local_*
 .vscode/*
 # Virtual python environment
 .venv
-# any __pycache__ and .pyc files
+# Any __pycache__ and .pyc files
 __pycache__/
 *.pyc

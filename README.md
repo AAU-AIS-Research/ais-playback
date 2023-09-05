@@ -114,7 +114,7 @@ playback(
 ## Playback Processors
 The playback module supports different playback processors which are classes that process the data emission from the playback module.
 
-It's up to the processor to decide what to do with the data emission from the playback module.
+It's up to the processor to decide what to do with the data emissions from the playback module.
 
 The following processors are currently available:
 * `Printer`: Prints the data emission to the console (default for the playback module).
