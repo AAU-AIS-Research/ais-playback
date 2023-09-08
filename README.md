@@ -59,8 +59,8 @@ The fields are currently mandatory and must be filled in, but they are not yet u
 ## Importing the modules
 To use the modules, you need to import them: 
 ```python
-from splitter.module import split
-from playback.module import playback
+from splitter import split
+from playback import playback
 from datetime import datetime # Optional, only needed for certain playback parameters 
 ```
 

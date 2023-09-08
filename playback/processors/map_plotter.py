@@ -15,7 +15,12 @@ class MapPlotter(AbstractPlaybackProcessor):
                  *,
                  extent: tuple[int] = (5, 16, 52.8, 60),  # Default extent is Danish waters
                  target_folder: str) -> None:
+        """Initialise the processor.
 
+        Args:
+            extent: The extent of the map to plot. (default: (5, 16, 52.8, 60))
+            target_folder: The folder to save the map and video in.
+        """
         if os.path.isfile(target_folder):
             raise ValueError('target_folder must be a folder, not a file.')
 
@@ -25,6 +30,7 @@ class MapPlotter(AbstractPlaybackProcessor):
 
         # Initialise the plot
         self.projection = ccrs.PlateCarree()
+        self.scatter = None
         self.map = plt.axes(projection=self.projection)
         self.map.set_extent(extent, crs=self.projection)
         self.map.add_image(cimgt.GoogleTiles(), 7)
@@ -44,16 +50,21 @@ class MapPlotter(AbstractPlaybackProcessor):
         self.loop_count += 1
 
         self.scatter = plt.scatter(dataframe.LON, dataframe.LAT, transform=self.projection, s=1, c='red')
+
         plt.savefig(f'{self.save_path}/frame_{self.loop_count}.png', dpi=300)
+
         self.scatter.remove()
 
     def end(self) -> None:
         """Collect all the plots and save them as a mp4."""
         print('Creating video...')
+
         image_folder = self.save_path
         video_name = f'{self.save_path}/video.mp4'
         png_files = [os.path.join(image_folder, f) for f in os.listdir(image_folder) if f.endswith('.png')]
         png_files.sort(key=os.path.getmtime)
         video = ImageSequenceClip(png_files, fps=5)
+
         video.write_videofile(video_name, codec='mpeg4', verbose=False, logger=None)
+
         print('Video created.')

@@ -3,6 +3,7 @@ import datetime
 from playback import playback
 from splitter import split
 from playback.processors import MapPlotter
+from helper_functions import largest_file_in_folder
 
 
 def split_dma_folder() -> None:
@@ -55,11 +56,14 @@ def playback_with_map_plotter_single() -> None:
     MP = MapPlotter(
         target_folder=map_target)
 
+    interesting_vessel = largest_file_in_folder('C:/Project Data/AIS/Split/DMA 1 Week/2023-08-02')
+
     playback(
-        source_path='C:/Project Data/AIS/Split/DMA 1 Week/2023-08-02/219023785.csv',
+        source_path=interesting_vessel,
         speed=900,
         processor=MP,
-        no_sleep=True
+        no_sleep=True,
+        prepro_path="C:/Project Data/AIS/Preprocessed Playback Data"
     )
 
 
@@ -87,5 +91,5 @@ if __name__ == '__main__':
     #playback_single_file()
     #playback_multiple_files()
 
-    #playback_with_map_plotter_single()
+    #layback_with_map_plotter_single()
     playback_with_map_plotter_multiple()

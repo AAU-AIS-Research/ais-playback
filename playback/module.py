@@ -1,18 +1,15 @@
 """Module for playing back AIS data from files."""
 from helper_functions import collect_files
-import pandas as pd
 from datetime import datetime, timedelta, time
 from time import perf_counter, sleep
 from playback.processors import Printer
 from playback.processors.parent import AbstractPlaybackProcessor
+from playback.constants import METADATA_KEY
+import pandas as pd
 import os
-
-
 import pyarrow as pa
 import pyarrow.parquet as pq
 import json
-import inspect
-from playback.constants import METADATA_KEY
 
 
 def playback(*,
@@ -46,9 +43,9 @@ def playback(*,
     if speed < 1 or speed > 900:
         raise ValueError('Speed must be between 1 and 900.')
 
-    # Setup for saving metadata, used to check if the data is the same as the data that was preprocessed previously.
+    # Metadata, verifies that parameters which effect the stored data, are the same between playback sessions.
     local_param = locals()
-    # Not necessary to save these parameters as they don't affect the data that is stored.
+    # Not necessary to check for these parameters as they don't affect the data which is stored.
     no_save_param = ['source_path', 'no_sleep', 'speed', 'processor']
     metadata = {key: str(local_param[key]) for key in local_param.keys() if key not in no_save_param}
 
@@ -59,6 +56,7 @@ def playback(*,
     playback_processor = processor
 
     playback_processor.begun()
+
     for time_group, dataframe_group in dataframe.groupby(pd.Grouper(key='TIMESTAMP', freq=f'{speed}S')):
         print(f'Emitting group: {time_group} at speed {speed}x')
 
@@ -89,11 +87,8 @@ def _preprocess_or_load(prepro_path: str | None,
         source_path: The path to the source data. If a folder, all files in the folder will be preprocessed.
         start_time: The beginning of the time interval to prune to (inclusive).
         stop_time: The end of the time interval to prune to (inclusive).
-        metadata: A dictionary containing the metadata to save to the preprocessed data. If the data is loaded from a
-        preprocessed file, the metadata will be checked to ensure that the data is the same as the data that was
-        preprocessed. If the data is not the same, the data will be preprocessed again.
+        metadata: A dictionary containing the metadata to save to the preprocessed data.
     """
-
     if prepro_path is None:
         print('No preprocessed data path given. Preprocessing data...')
         dataframe = _preprocessing_playback(source_path, start_time, stop_time)
@@ -111,18 +106,17 @@ def _preprocess_or_load(prepro_path: str | None,
     else:
         print(f'Found preprocessed data at {prepro_path}. Attempting to load...')
 
-        metadata_content = json.dumps(metadata)
-        dataframe = pd.read_parquet(prepro_path)
+        arrow_table = pq.read_table(prepro_path)
+        loaded_metadata = json.loads(arrow_table.schema.metadata[METADATA_KEY.encode()])
 
-        if METADATA_KEY in dataframe.columns:
-            metadata_from_file = dataframe[METADATA_KEY][0]
-            if metadata_from_file != metadata_content:
-                print('Metadata does not match. Preprocessing data...')
-                dataframe = _preprocessing_playback(source_path, start_time, stop_time, prepro_path, metadata)
-                return dataframe
-            else:
-                print('Metadata matches. Loading data...')
-                return dataframe
+        if loaded_metadata == metadata:
+            print('Metadata matches. Loading preprocessed data...')
+            dataframe = arrow_table.to_pandas()
+            return dataframe
+
+        print('Metadata does not match. Preprocessing data...')
+        dataframe = _preprocessing_playback(source_path, start_time, stop_time, prepro_path, metadata)
+        return dataframe
 
 
 def _preprocessing_playback(
@@ -161,22 +155,17 @@ def _preprocessing_playback(
           f'at {datetime.now()}')
 
     if save_path is not None:
-        dataframe = dataframe.reset_index(drop=True)
-
-        # Add metadata to the dataframe
-        metadata_content = json.dumps(metadata)
-        arrow_table = pa.Table.from_pandas(dataframe)
-        existing_metadata = arrow_table.schema.metadata
-        combined_metadata = {
-            METADATA_KEY.encode(): metadata_content.encode(),
-            **existing_metadata
-        }
-        arrow_table = arrow_table.replace_schema_metadata(combined_metadata)
+        # Reset the index to start at 0
+        dataframe = dataframe.reset_index()
 
         # Ensure that the save path ends with .parquet
         save_path = save_path + '.parquet' if not save_path.endswith('.parquet') else save_path
-        print(f'Saving preprocessed data to {save_path}...')
+
+        print(f'Saving preprocessed data to {save_path}')
+
+        arrow_table = _dataframe_to_arrow_table_with_metadata(dataframe, metadata)
         pq.write_table(arrow_table, save_path)
+
         print(f'Saved preprocessed data to {save_path} at {datetime.now()}')
 
     return dataframe
@@ -223,6 +212,25 @@ def _concat_files_to_dataframe(files: list[str]) -> pd.DataFrame:
 
     dataframe = pd.concat(dataframe_list)
 
-    print(f'Concatenated files in {timedelta(seconds=(perf_counter() - collect_start_time))} at {datetime.now()}')
+    print(f'\nConcatenated files in {timedelta(seconds=(perf_counter() - collect_start_time))} at {datetime.now()}')
 
     return dataframe
+
+
+def _dataframe_to_arrow_table_with_metadata(dataframe: pd.DataFrame, metadata: dict[str, any]) -> pa.Table:
+    """Convert a pandas dataframe to an arrow table with metadata.
+
+    Args:
+        dataframe: The pandas dataframe to convert.
+        metadata: The metadata to add to the arrow table.
+    """
+    arrow_table = pa.Table.from_pandas(dataframe)
+    metadata_content = json.dumps(metadata)
+    existing_metadata = arrow_table.schema.metadata
+    combined_metadata = {
+        METADATA_KEY.encode(): metadata_content.encode(),
+        **existing_metadata
+    }
+    arrow_table = arrow_table.replace_schema_metadata(combined_metadata)
+
+    return arrow_table
