@@ -8,11 +8,18 @@ from playback.processors.parent import AbstractPlaybackProcessor
 import os
 
 
+import pyarrow as pa
+import pyarrow.parquet as pq
+import json
+import inspect
+from playback.constants import METADATA_KEY
+
+
 def playback(*,
              source_path: str,
              prepro_path: str | None = None,
              speed: int,
-             subset: list[str | int] = None,  # Not used yet
+             subset: list[str | int] = None,  # Not used yet, but will be used to subset the data.
              start_time: datetime.time = time.min, stop_time: datetime.time = time.max,
              processor: AbstractPlaybackProcessor = Printer(),
              no_sleep: bool = False
@@ -39,7 +46,13 @@ def playback(*,
     if speed < 1 or speed > 900:
         raise ValueError('Speed must be between 1 and 900.')
 
-    dataframe = _preprocess_or_load(prepro_path, source_path, start_time, stop_time)
+    # Setup for saving metadata, used to check if the data is the same as the data that was preprocessed previously.
+    local_param = locals()
+    # Not necessary to save these parameters as they don't affect the data that is stored.
+    no_save_param = ['source_path', 'no_sleep', 'speed', 'processor']
+    metadata = {key: str(local_param[key]) for key in local_param.keys() if key not in no_save_param}
+
+    dataframe = _preprocess_or_load(prepro_path, source_path, start_time, stop_time, metadata)
 
     print(f'Playing back data at {speed}x speed from {start_time} to {stop_time}...')
 
@@ -63,7 +76,8 @@ def playback(*,
 def _preprocess_or_load(prepro_path: str | None,
                         source_path: str,
                         start_time: datetime.time,
-                        stop_time: datetime.time
+                        stop_time: datetime.time,
+                        metadata: dict[str, any]
                         ) -> pd.DataFrame:
     """Preprocess the data if it has not already been preprocessed, or load the preprocessed data if it has.
 
@@ -75,37 +89,48 @@ def _preprocess_or_load(prepro_path: str | None,
         source_path: The path to the source data. If a folder, all files in the folder will be preprocessed.
         start_time: The beginning of the time interval to prune to (inclusive).
         stop_time: The end of the time interval to prune to (inclusive).
+        metadata: A dictionary containing the metadata to save to the preprocessed data. If the data is loaded from a
+        preprocessed file, the metadata will be checked to ensure that the data is the same as the data that was
+        preprocessed. If the data is not the same, the data will be preprocessed again.
     """
+
     if prepro_path is None:
         print('No preprocessed data path given. Preprocessing data...')
         dataframe = _preprocessing_playback(source_path, start_time, stop_time)
-    elif os.path.isdir(prepro_path):
-        # If the prepro_path is a folder, the preprocessed data will be saved to the folder with the same name as the
-        # source file or folder. Therefore, a check is made to see if the preprocessed data already exists.
-        prepro_path = os.path.join(prepro_path, os.path.basename(source_path))
-        if os.path.isfile(prepro_path + '.parquet'):
-            print(f'Found preprocessed data at {prepro_path}. Loading...')
-            dataframe = pd.read_parquet(prepro_path + '.parquet')
-        else:
-            print(f'No preprocessed data found at {prepro_path}. Preprocessing data...')
-            dataframe = _preprocessing_playback(source_path, start_time, stop_time, prepro_path)
+        return dataframe
+
+    if os.path.isdir(prepro_path):
+        prepro_path = os.path.join(prepro_path, os.path.basename(source_path) + '.parquet')
     else:
-        # Ensure that the prepro_path ends with .parquet
-        prepro_path = prepro_path + '.parquet' if prepro_path and not prepro_path.endswith('.parquet') else prepro_path
-        if os.path.isfile(prepro_path):
-            print(f'Found preprocessed data at {prepro_path}. Loading...')
-            dataframe = pd.read_parquet(prepro_path)
-        else:
-            print(f'No preprocessed data found at {prepro_path}. Preprocessing data...')
-            dataframe = _preprocessing_playback(source_path, start_time, stop_time, prepro_path)
-    return dataframe
+        prepro_path = prepro_path + '.parquet' if not prepro_path.endswith('.parquet') else prepro_path
+
+    if os.path.isfile(prepro_path) is False:
+        print('No preprocessed data found. Preprocessing data...')
+        dataframe = _preprocessing_playback(source_path, start_time, stop_time, prepro_path, metadata)
+        return dataframe
+    else:
+        print(f'Found preprocessed data at {prepro_path}. Attempting to load...')
+
+        metadata_content = json.dumps(metadata)
+        dataframe = pd.read_parquet(prepro_path)
+
+        if METADATA_KEY in dataframe.columns:
+            metadata_from_file = dataframe[METADATA_KEY][0]
+            if metadata_from_file != metadata_content:
+                print('Metadata does not match. Preprocessing data...')
+                dataframe = _preprocessing_playback(source_path, start_time, stop_time, prepro_path, metadata)
+                return dataframe
+            else:
+                print('Metadata matches. Loading data...')
+                return dataframe
 
 
 def _preprocessing_playback(
         source_path: str,
         start_time: datetime.time,
         stop_time: datetime.time,
-        save_path: str = None
+        save_path: str = None,
+        metadata: dict[str, any] = None
 ) -> pd.DataFrame:
     """Preprocess the AIS data for playback.
 
@@ -136,10 +161,22 @@ def _preprocessing_playback(
           f'at {datetime.now()}')
 
     if save_path is not None:
+        dataframe = dataframe.reset_index(drop=True)
+
+        # Add metadata to the dataframe
+        metadata_content = json.dumps(metadata)
+        arrow_table = pa.Table.from_pandas(dataframe)
+        existing_metadata = arrow_table.schema.metadata
+        combined_metadata = {
+            METADATA_KEY.encode(): metadata_content.encode(),
+            **existing_metadata
+        }
+        arrow_table = arrow_table.replace_schema_metadata(combined_metadata)
+
         # Ensure that the save path ends with .parquet
         save_path = save_path + '.parquet' if not save_path.endswith('.parquet') else save_path
         print(f'Saving preprocessed data to {save_path}...')
-        dataframe.to_parquet(save_path, index=False)
+        pq.write_table(arrow_table, save_path)
         print(f'Saved preprocessed data to {save_path} at {datetime.now()}')
 
     return dataframe

@@ -11,7 +11,11 @@ from moviepy.editor import ImageSequenceClip
 class MapPlotter(AbstractPlaybackProcessor):
     """Processor responsible for printing each dataframe as they are processed during playback."""
 
-    def __init__(self, extent: tuple[int] = (5, 16, 52.8, 60), *, target_folder: str) -> None:
+    def __init__(self,
+                 *,
+                 extent: tuple[int] = (5, 16, 52.8, 60),  # Default extent is Danish waters
+                 target_folder: str) -> None:
+
         if os.path.isfile(target_folder):
             raise ValueError('target_folder must be a folder, not a file.')
 
@@ -19,7 +23,7 @@ class MapPlotter(AbstractPlaybackProcessor):
         self.save_path = target_folder
         self.loop_count = 0
 
-        # Initialise the plot.
+        # Initialise the plot
         self.projection = ccrs.PlateCarree()
         self.map = plt.axes(projection=self.projection)
         self.map.set_extent(extent, crs=self.projection)
