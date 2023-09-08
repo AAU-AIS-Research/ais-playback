@@ -1,8 +1,8 @@
 # Temporary test files
 tests/data/temp/*
 
-# Local config files
-config/local_*
+# Local files (for development)
+local_*
 
 # Requirement Specification
 specification.yaml
