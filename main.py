@@ -3,12 +3,13 @@ import datetime
 from playback import playback
 from splitter import split
 from playback.processors import MapPlotter
+from helper_functions import largest_file_in_folder
 
 
 def split_dma_folder() -> None:
     """Split the AIS data from the Danish Maritime Authority."""
     split(
-        config_path='C:/Projects/ais-playback/config_examples/danish_marine_authority.ini',
+        config_path='/config/danish_marine_authority.ini',
         source_path='C:/Project Data/AIS/DMA 2023-08-01 to 2023-08-07',
         target_path='C:/Project Data/AIS/Split/DMA 1 Week'
     )
@@ -17,7 +18,7 @@ def split_dma_folder() -> None:
 def split_ma_folder() -> None:
     """Split the AIS data from the Marine Cadastre."""
     split(
-        config_path='C:/Projects/ais-playback/config_examples/marine_cadastre.ini',
+        config_path='/config/marine_cadastre.ini',
         source_path='C:/Project Data/AIS/MA/AIS_2023_01_01.csv',
         target_path='C:/Project Data/AIS/Split/MA'
     )
@@ -55,23 +56,10 @@ def playback_with_map_plotter_single() -> None:
     MP = MapPlotter(
         target_folder=map_target)
 
-    playback(
-        source_path='C:/Project Data/AIS/Split/DMA 1 Week/2023-08-02/219023785.csv',
-        speed=900,
-        processor=MP,
-        no_sleep=True
-    )
-
-
-def playback_with_map_plotter_multiple() -> None:
-    """Playback of multiple files with a map plotter."""
-    map_target = "C:/Project Data/AIS/Maps/Day 2023-08-02"
-
-    MP = MapPlotter(
-        target_folder=map_target)
+    interesting_vessel = largest_file_in_folder('C:/Project Data/AIS/Split/DMA 1 Week/2023-08-02')
 
     playback(
-        source_path='C:/Project Data/AIS/Split/DMA 1 Week/2023-08-02',
+        source_path=interesting_vessel,
         speed=900,
         processor=MP,
         no_sleep=True,
@@ -79,12 +67,29 @@ def playback_with_map_plotter_multiple() -> None:
     )
 
 
+def playback_with_map_plotter_multiple() -> None:
+    """Playback of multiple files with a map plotter."""
+    for i in range(1, 8):
+        day = f'2023-08-0{i}'
+        map_target = f"C:/Project Data/AIS/Maps/Day {day}"
+        MP = MapPlotter(
+            target_folder=map_target)
+
+        playback(
+            source_path=f'C:/Project Data/AIS/Split/DMA 1 Week/{day}',
+            speed=900,
+            processor=MP,
+            no_sleep=True,
+            prepro_path="C:/Project Data/AIS/Preprocessed Playback Data"
+        )
+
+
 if __name__ == '__main__':
 
-    split_dma_folder()
+    #split_dma_folder()
 
-    playback_single_file()
-    playback_multiple_files()
+    #playback_single_file()
+    #playback_multiple_files()
 
-    playback_with_map_plotter_single()
+    #layback_with_map_plotter_single()
     playback_with_map_plotter_multiple()

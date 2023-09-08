@@ -5,10 +5,14 @@
 * Run the modules (see below)
 
 ## Setting up a config file
-The config file is used to provides information about the source of the AIS data and the columns names of the data. 
+The config file is used to provides information about a source of the AIS data and the columns names for that data. 
 The columns names are split into 2 sections, `SimpleColumns` and `ExtendedColumns`.
 
-The config file is a `.ini` file that should be created from a copy of the `template.ini` file found in the `config_examples` folder. 
+The config file is a `.ini` file that should be created by copying the `template.ini` file found in the `config` folder, changing the variables in the copy to match the structure of your AIS data.
+
+An example of a fully filled out config file can be seen in the `danish_marine_authority.ini` file in the `config` folder.
+This config defines the AIS data from the [Danish Maritime Authority](https://dma.dk/safety-at-sea/navigational-information/ais-data).
+
 The config file contains the following sections:
 
 ### DataSource: 
@@ -53,13 +57,12 @@ The fields are currently mandatory and must be filled in, but they are not yet u
 * `d`: Dimension to starboard
 
 ## Importing the modules
-To use the modules, you need to import them into your python script. 
+To use the modules, you need to import them: 
 ```python
-from splitter.module import split
-from playback.module import playback
+from splitter import split
+from playback import playback
 from datetime import datetime # Optional, only needed for certain playback parameters 
 ```
-The `main.py` file contains an example of how to use the modules.
 
 ## Running the modules
 To run the modules, you need to call the appropriate function. 
@@ -74,12 +77,13 @@ It has 4 parameters:
 * `prune_to_date`: The date to prune the data to. Must be a `datetime.date` object. Optional, defaults to `None`
 
 Example:
+
 ```python
 from splitter import split
 
 # Split the AIS data from the Danish Maritime Authority
 split(
-    config_path='C:/Projects/ais-playback/config_examples/danish_marine_authority.ini',
+    config_path='/config/danish_marine_authority.ini',
     source_path='C:/Project Data/AIS/DMA 2023-08-12 to 2023-08-14',
     target_path='C:/Project Data/AIS/Split/DMA')
 ```
@@ -119,11 +123,11 @@ It's up to the processor to decide what to do with the data emissions from the p
 The following processors are currently available:
 * `Printer`: Prints the data emission to the console (default for the playback module).
 * `MapPlotter`: Plots the data emission on a map which is stored in a folder as png files. 
-Then when all emission are processed, it creates a video of from the png files and stores it in the same folder.
+When all emission are processed, a video is created from the png files and stores the video in the same folder.
 
 Further processors can be created by inheriting from the `AbstractPlaybackProcessor` class and implementing the `process` method and optionally the `begun` and `end` method.
 
-The `process` method is called for each data emission, where the data emission is passed as a `DataFrame` from the pandas library.
+The `process` method is called for each data emission, where each data emission is passed as a `DataFrame` from the pandas library.
 
 The `begun` method is called when the playback begins and the `end` method is called when the playback ends. 
-This can be used to initialize and clean up resources or store results collected during the playback. 
+This can be used for initialization, cleaning up resources or store results collected during the playback. 
