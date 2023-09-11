@@ -49,8 +49,7 @@ def collect_files(path: str, filetype: str) -> list[str]:
     elif os.path.isfile(path):
         return [path if path.endswith(filetype) else None]
     else:
-        warnings.warn(f'Path {path} is not a file or a directory', UserWarning, stacklevel=2)
-        return []
+        raise ValueError(f'Path {path} is not a file or a folder.')
 
 
 def print_lines_from_file(file_name: str, number_of_lines: int = 5) -> None:
