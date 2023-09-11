@@ -73,3 +73,19 @@ def largest_file_in_folder(folder_path: str) -> str:
     """
     files = [os.path.join(folder_path, file) for file in os.listdir(folder_path)]
     return max(files, key=os.path.getsize)
+
+
+def files_total_size(dir_path):
+    """Return the total size of all files in a directory.
+
+    Args:
+        dir_path: The path to the directory to search.
+        """
+    total_size = 0
+    for file in os.listdir(dir_path):
+        file_path = os.path.join(dir_path, file)
+        if os.path.isfile(file_path):
+            total_size += os.path.getsize(file_path)
+        elif os.path.isdir(file_path):
+            total_size += files_total_size(file_path)
+    return total_size
