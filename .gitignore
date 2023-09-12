@@ -1,5 +1,6 @@
-# Temporary test files
+# Related to testing
 tests/data/temp/*
+.coverage
 
 # Local files (for development)
 local_*
@@ -11,8 +12,10 @@ specification.yaml
 .idea/*
 !/.idea/runConfigurations
 .vscode/*
+
 # Virtual python environment
 .venv
+
 # Any __pycache__ and .pyc files
 __pycache__/
 *.pyc

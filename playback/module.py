@@ -10,7 +10,7 @@ import os
 import pyarrow as pa
 import pyarrow.parquet as pq
 import json
-import logging
+
 
 class Playback:
     """A class for playing back AIS data from files."""
@@ -25,26 +25,27 @@ class Playback:
                  player: str = 'simple',
                  processor: PlaybackProcessor = Printer(),
                  verbose: bool = True
-                 )-> None:
+                 ) -> None:
         """Initialise the playback class.
 
         Args:
             source_path: The path to the source data. If a folder, all files in the folder will be played back.
             prepro_folder: Defines both the path to load preprocessed data from and the path to save preprocessed data to
-            if the data has not already been preprocessed. If None, the preprossed data will not be saved.
+            if the data has not already been preprocessed. If None, the preprocessed data will not be saved.
             (default: None)
-            subset: A list of mmsi numbers or vessel names to play back.
+            subset: A list of filters to derive a subset of data for playback. Not yet implemented.
             If None, all vessels will be played back. (default: None)
             start_time: The time to start playback. (default: 00:00:00)
             stop_time: The time to stop playback. (default: 23:59:59)
+            player: The player to use for playback. Determines how the data is loaded and played back.
+            (default: 'simple')
             processor: The processors class to use for processing the data. (default: Printer)
         """
         # Path related variables
         self.source_path = source_path
-        self.prepro_folder = prepro_folder
         self.prepro_base_folder = os.path.join(prepro_folder, os.path.basename(source_path)) \
             if prepro_folder is not None else None
-        self.prepro_derived_folder = os.path.join(prepro_folder, 'derived') if prepro_folder is not None else None
+        self.prepro_derived_folder = os.path.join(self.prepro_base_folder, 'Derived Data') if prepro_folder is not None else None
 
         # Filter related variables
         self.subset = subset
@@ -62,7 +63,7 @@ class Playback:
 
         Used to check if the derived data has already been preprocessed and stored in the preprocessed data folder.
         """
-        return hash(tuple([self.subset, self.start_time, self.stop_time, self.player]))
+        return hash((self.subset, self.start_time, self.stop_time, self.player))
 
     def play(self, speed: int = 1, no_sleep: bool = False):
         """Play back AIS data from files by emitting groups of data for each time interval.
@@ -92,17 +93,14 @@ class Playback:
 
     def _preprocess_or_load(self) -> pd.DataFrame:
         """Preprocess the data if it has not already been preprocessed, or load the preprocessed data if it has."""
-        if self.prepro_folder is None:
+        if self.prepro_base_folder is None:
             print('No preprocessed data path given. Preprocessing data...')
-            dataframe = self._preprocess_playback(save=False)
+            dataframe = self._create_playback
             return dataframe
-
-        if not os.path.isdir(self.prepro_folder):
-            raise ValueError('prepro_folder must be a folder.')
 
         self._create_preprocessed_folders()
 
-        if not os.path.exists(os.path.join(self.prepro_folder, 'base.parquet')):
+        if not os.path.exists(os.path.join(self.prepro_base_folder, 'base.parquet')):
             print('Preprocessing base data...')
             self._preprocess_playback_base()
 
@@ -115,39 +113,57 @@ class Playback:
             dataframe = self._preprocess_playback()
             return dataframe
 
-    def _load_playback(self, hash: str) -> pd.DataFrame:
+    def _load_playback(self) -> pd.DataFrame:
         """Load the preprocessed data from the preprocessed data folder."""
 
-        pass
+        dataframe = pd.read_parquet(os.path.join(self.prepro_derived_folder, f'{self.hash_filter_parameters}.parquet'))
 
-    def _preprocess_playback_base(self) -> pd.DataFrame:
+        return dataframe
+
+    def _preprocess_playback_base(self) -> None:
         """Preprocess the source AIS data for further processing as a base for the altered data."""
 
-        pass
+        print('Preprocessing base data...')
 
-    def _preprocess_playback(self, save: bool = True) -> pd.DataFrame:
-        """Preprocess the source AIS data for playback.
-
-        This includes concatenating files, sorting by timestamp, and pruning to a time interval.
-
-        Args:
-            save: If True, the preprocessed data will be saved to the preprocessed data folder.
-        """
-        print('Preprocessing data...')
-
-        prepossessing_start_time = perf_counter()
         files = collect_files(self.source_path, 'csv')
-        dataframe = self._concat_files_to_dataframe(files)
+        dataframe = self._load_source()
+
+        # dataframe = dataframe.sort_values(by=['TIMESTAMP'])
+
+        print('Saving base file for preprocessed data...')
+        dataframe.to_parquet(os.path.join(self.prepro_base_folder, 'base.parquet'))
+
+    def _load_source(self) -> pd.DataFrame:
+        """Load the raw source data from the given files and return a concatenated dataframe."""
+
+        source_files = collect_files(self.source_path, 'csv')
+        number_of_files = len(source_files)
+        dataframe_list = []
+        start_time = perf_counter()
+
+        print(f'Loading source data at {datetime.now()}')
+
+        for file in source_files:
+            if source_files.index(file) % 100 == 0:
+                percentage_done = round(source_files.index(file) / number_of_files * 100, 2)
+                print(f'\rLoading file {source_files.index(file)} of {number_of_files} ({percentage_done}%)', end='')
+            dataframe_list.append(pd.read_csv(file, encoding='utf-8', sep='|'))
+
+        print(f'\nLoaded source data at {datetime.now()} in {timedelta(seconds=(perf_counter() - start_time))}')
+
+        dataframe = pd.concat(dataframe_list, ignore_index=True)
 
         return dataframe
 
 
 
 
+
+
     def _create_preprocessed_folders(self) -> None:
         """Creates the folder structure for the preprocessed data."""
-        if not os.path.exists(self.prepro_folder):
-            os.makedirs(self.prepro_folder)
+        if not os.path.exists(self.prepro_base_folder):
+            os.makedirs(self.prepro_base_folder)
 
         if not os.path.exists(self.prepro_derived_folder):
             os.makedirs(self.prepro_derived_folder)

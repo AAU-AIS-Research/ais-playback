@@ -13,11 +13,12 @@ def read_csv(file_name: str, config: configparser.ConfigParser) -> pd.DataFrame:
     """
     seperator = config['DataSource']['separator']
     encoding = config['DataSource']['encoding']
+    na_values = ['NaN', 'Unknown', 'nan']
 
     if not file_name.endswith('.csv'):
         raise ValueError("File must be a csv file")
     else:
-        dataframe = pd.read_csv(file_name, sep=seperator, encoding=encoding)
+        dataframe = pd.read_csv(file_name, sep=seperator, encoding=encoding, na_values=na_values, keep_default_na=False)
     return dataframe
 
 

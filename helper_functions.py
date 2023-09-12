@@ -88,3 +88,11 @@ def files_total_size(dir_path):
         elif os.path.isdir(file_path):
             total_size += files_total_size(file_path)
     return total_size
+
+
+def read_write_lines(source_path: str, target_path: str, lines: int):
+    """Read the specified lines from a file and write them to a new file."""
+    with open(source_path, 'r') as source:
+        with open(target_path, 'w') as target:
+            for i in range(lines):
+                target.write(source.readline())
