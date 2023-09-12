@@ -3,13 +3,154 @@ from helper_functions import collect_files
 from datetime import datetime, timedelta, time
 from time import perf_counter, sleep
 from playback.processors import Printer
-from playback.processors.parent import AbstractPlaybackProcessor
+from playback.processors.playback_processor import PlaybackProcessor
 from playback.constants import METADATA_KEY
 import pandas as pd
 import os
 import pyarrow as pa
 import pyarrow.parquet as pq
 import json
+import logging
+
+class Playback:
+    """A class for playing back AIS data from files."""
+
+    def __init__(self,
+                 *,
+                 source_path: str,
+                 prepro_folder: str | None = None,
+                 subset: list[str | int] = None,  # Not used yet, but will be used to subset the data.
+                 start_time: datetime.time = time.min,
+                 stop_time: datetime.time = time.max,
+                 player: str = 'simple',
+                 processor: PlaybackProcessor = Printer(),
+                 verbose: bool = True
+                 )-> None:
+        """Initialise the playback class.
+
+        Args:
+            source_path: The path to the source data. If a folder, all files in the folder will be played back.
+            prepro_folder: Defines both the path to load preprocessed data from and the path to save preprocessed data to
+            if the data has not already been preprocessed. If None, the preprossed data will not be saved.
+            (default: None)
+            subset: A list of mmsi numbers or vessel names to play back.
+            If None, all vessels will be played back. (default: None)
+            start_time: The time to start playback. (default: 00:00:00)
+            stop_time: The time to stop playback. (default: 23:59:59)
+            processor: The processors class to use for processing the data. (default: Printer)
+        """
+        # Path related variables
+        self.source_path = source_path
+        self.prepro_folder = prepro_folder
+        self.prepro_base_folder = os.path.join(prepro_folder, os.path.basename(source_path)) \
+            if prepro_folder is not None else None
+        self.prepro_derived_folder = os.path.join(prepro_folder, 'derived') if prepro_folder is not None else None
+
+        # Filter related variables
+        self.subset = subset
+        self.start_time = start_time
+        self.stop_time = stop_time
+        self.player = player
+
+        # Other variables
+        self.verbose = verbose
+        self.processor = processor
+
+    @property
+    def hash_filter_parameters(self):
+        """Hashes the parameters which effect the derived data, and returns the hash.
+
+        Used to check if the derived data has already been preprocessed and stored in the preprocessed data folder.
+        """
+        return hash(tuple([self.subset, self.start_time, self.stop_time, self.player]))
+
+    def play(self, speed: int = 1, no_sleep: bool = False):
+        """Play back AIS data from files by emitting groups of data for each time interval.
+
+        Args:
+            speed: The speed to play back the data. 1 is real time, 2 is twice as fast, etc. Must be between 1 and 900.
+            no_sleep: If True, the playback will not sleep between emissions. (default: False)
+        """
+        print(f'Playing back AIS data at {datetime.now()}')
+        print(f'Source path: {self.source_path}')
+
+        if speed < 1 or speed > 900:
+            raise ValueError('Speed must be between 1 and 900.')
+
+        dataframe = self._preprocess_or_load()
+
+        for time_group, dataframe_group in dataframe.groupby(pd.Grouper(key='TIMESTAMP', freq=f'{speed}S')):
+            print(f'Emitting group: {time_group} at speed {speed}x')
+
+            if not dataframe_group.empty:
+                # Reset the index to start at 0, else it will continue from the previous group.
+                dataframe_group.reset_index(inplace=True, drop=True)
+
+                self.processor.process(dataframe_group)
+
+            sleep(1) if not no_sleep else None
+
+    def _preprocess_or_load(self) -> pd.DataFrame:
+        """Preprocess the data if it has not already been preprocessed, or load the preprocessed data if it has."""
+        if self.prepro_folder is None:
+            print('No preprocessed data path given. Preprocessing data...')
+            dataframe = self._preprocess_playback(save=False)
+            return dataframe
+
+        if not os.path.isdir(self.prepro_folder):
+            raise ValueError('prepro_folder must be a folder.')
+
+        self._create_preprocessed_folders()
+
+        if not os.path.exists(os.path.join(self.prepro_folder, 'base.parquet')):
+            print('Preprocessing base data...')
+            self._preprocess_playback_base()
+
+        if os.path.exists(os.path.join(self.prepro_derived_folder, f'{self.hash_filter_parameters}.parquet')):
+            print('Loading preprocessed data...')
+            dataframe = self._load_playback()
+            return dataframe
+        else:
+            print('Preprocessing altered data...')
+            dataframe = self._preprocess_playback()
+            return dataframe
+
+    def _load_playback(self, hash: str) -> pd.DataFrame:
+        """Load the preprocessed data from the preprocessed data folder."""
+
+        pass
+
+    def _preprocess_playback_base(self) -> pd.DataFrame:
+        """Preprocess the source AIS data for further processing as a base for the altered data."""
+
+        pass
+
+    def _preprocess_playback(self, save: bool = True) -> pd.DataFrame:
+        """Preprocess the source AIS data for playback.
+
+        This includes concatenating files, sorting by timestamp, and pruning to a time interval.
+
+        Args:
+            save: If True, the preprocessed data will be saved to the preprocessed data folder.
+        """
+        print('Preprocessing data...')
+
+        prepossessing_start_time = perf_counter()
+        files = collect_files(self.source_path, 'csv')
+        dataframe = self._concat_files_to_dataframe(files)
+
+        return dataframe
+
+
+
+
+    def _create_preprocessed_folders(self) -> None:
+        """Creates the folder structure for the preprocessed data."""
+        if not os.path.exists(self.prepro_folder):
+            os.makedirs(self.prepro_folder)
+
+        if not os.path.exists(self.prepro_derived_folder):
+            os.makedirs(self.prepro_derived_folder)
 
 
 def playback(*,
@@ -18,7 +159,7 @@ def playback(*,
              speed: int,
              subset: list[str | int] = None,  # Not used yet, but will be used to subset the data.
              start_time: datetime.time = time.min, stop_time: datetime.time = time.max,
-             processor: AbstractPlaybackProcessor = Printer(),
+             processor: PlaybackProcessor = Printer(),
              no_sleep: bool = False
              ) -> None:
     """Play back AIS data from files.
@@ -34,7 +175,7 @@ def playback(*,
          If None, all vessels will be played back. (default: None)
         start_time: The time to start playback. (default: 00:00:00)
         stop_time: The time to stop playback. (default: 23:59:59)
-        processor: The processor class to use for processing the data. (default: Printer)
+        processor: The processors class to use for processing the data. (default: Printer)
         no_sleep: If True, the playback will not sleep between emitting groups. (default: False)
     """
     print(f'Playing back AIS data at {datetime.now()}')
@@ -46,7 +187,7 @@ def playback(*,
     # Metadata, verifies that parameters which effect the stored data, are the same between playback sessions.
     local_param = locals()
     # Not necessary to check for these parameters as they don't affect the data which is stored.
-    no_save_param = ['source_path', 'no_sleep', 'speed', 'processor']
+    no_save_param = ['source_path', 'no_sleep', 'speed', 'processors']
     metadata = {key: str(local_param[key]) for key in local_param.keys() if key not in no_save_param}
 
     dataframe = _preprocess_or_load(prepro_path, source_path, start_time, stop_time, metadata)
@@ -94,29 +235,17 @@ def _preprocess_or_load(prepro_path: str | None,
         dataframe = _preprocessing_playback(source_path, start_time, stop_time)
         return dataframe
 
-    if os.path.isdir(prepro_path):
-        prepro_path = os.path.join(prepro_path, os.path.basename(source_path) + '.parquet')
-    else:
-        prepro_path = prepro_path + '.parquet' if not prepro_path.endswith('.parquet') else prepro_path
+    if not os.path.isdir(prepro_path):
+        raise ValueError('prepro_path must be a folder.')
 
-    if os.path.isfile(prepro_path) is False:
-        print('No preprocessed data found. Preprocessing data...')
-        dataframe = _preprocessing_playback(source_path, start_time, stop_time, prepro_path, metadata)
-        return dataframe
-    else:
-        print(f'Found preprocessed data at {prepro_path}. Attempting to load...')
+    prepro_folder = prepro_path + os.path.basename(source_path)
+    prepro_altered_folder = prepro_folder + '/altered'
 
-        arrow_table = pq.read_table(prepro_path)
-        loaded_metadata = json.loads(arrow_table.schema.metadata[METADATA_KEY.encode()])
+    if not os.path.exists(prepro_folder):
+        os.makedirs(prepro_folder)
 
-        if loaded_metadata == metadata:
-            print('Metadata matches. Loading preprocessed data...')
-            dataframe = arrow_table.to_pandas()
-            return dataframe
 
-        print('Metadata does not match. Preprocessing data...')
-        dataframe = _preprocessing_playback(source_path, start_time, stop_time, prepro_path, metadata)
-        return dataframe
+
 
 
 def _preprocessing_playback(
