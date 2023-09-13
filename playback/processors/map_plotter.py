@@ -1,5 +1,5 @@
-"""Playback processor that creates a map of the vessel's movements, then combines the images into a mp4 video."""
-from playback.processors.parent import AbstractPlaybackProcessor
+"""Playback processors that creates a map of the vessel's movements, then combines the images into a mp4 video."""
+from playback.processors.playback_processor import PlaybackProcessor
 import pandas as pd
 import matplotlib.pyplot as plt
 import cartopy.crs as ccrs
@@ -8,8 +8,11 @@ import os
 from moviepy.editor import ImageSequenceClip
 
 
-class MapPlotter(AbstractPlaybackProcessor):
-    """Processor responsible for printing each dataframe as they are processed during playback."""
+class MapPlotter(PlaybackProcessor):
+    """Processor capable of creating maps of the vessel's movements then combining the images into a video.
+
+    The map is created using Cartopy saved as a png, then the pngs are combined into a mp4 using MoviePy.
+    """
 
     def __init__(self,
                  *,
@@ -24,7 +27,6 @@ class MapPlotter(AbstractPlaybackProcessor):
         if os.path.isfile(target_folder):
             raise ValueError('target_folder must be a folder, not a file.')
 
-        super().__init__()
         self.save_path = target_folder
         self.loop_count = 0
 
@@ -36,11 +38,11 @@ class MapPlotter(AbstractPlaybackProcessor):
         self.map.add_image(cimgt.GoogleTiles(), 7)
 
     def begun(self) -> None:
-        """Reset the plot, so that it can be reused for the next playback.
+        """Reinitialise the processor so that the plot is empty and the loop count is 0.
 
         Also creates the save folder if it doesn't exist.
         """
-        self.__init__(target_folder=self.save_path)
+        self.__init__(target_folder=self.save_path)  # FIXME: This is a hacky way to reinitialise the processor
 
         if not os.path.exists(self.save_path):
             os.makedirs(self.save_path)

@@ -2,7 +2,6 @@
 from datetime import datetime, timedelta
 from time import perf_counter
 import os
-import warnings
 
 
 def timeit(func, name: str = None):  # noqa: ANN001,ANN201
@@ -74,12 +73,12 @@ def largest_file_in_folder(folder_path: str) -> str:
     return max(files, key=os.path.getsize)
 
 
-def files_total_size(dir_path):
+def files_total_size(dir_path: str) -> int:
     """Return the total size of all files in a directory.
 
     Args:
         dir_path: The path to the directory to search.
-        """
+    """
     total_size = 0
     for file in os.listdir(dir_path):
         file_path = os.path.join(dir_path, file)
@@ -88,3 +87,11 @@ def files_total_size(dir_path):
         elif os.path.isdir(file_path):
             total_size += files_total_size(file_path)
     return total_size
+
+
+def read_write_lines(source_path: str, target_path: str, lines: int) -> None:
+    """Read the specified lines from a file and write them to a new file."""
+    with open(source_path, 'r') as source:
+        with open(target_path, 'w') as target:
+            for i in range(lines):
+                target.write(source.readline())
