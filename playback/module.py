@@ -120,7 +120,21 @@ class Playback:
     def _create_derived_playback(self) -> pd.DataFrame:
         """Create the derived playback data based on the given parameters and return the derived dataframe."""
         # TODO: Implement this. Collect then apply filters?
-        raise NotImplementedError('Playback without preprocessed base data not implemented yet')
+        start_time = perf_counter()
+
+        dataframe = self._load_source()
+
+        self._date_and_time_to_timestamp(dataframe)
+
+        # Remove columns that are not needed for playback.
+        dataframe = dataframe[self._get_columns()]
+
+        dataframe = self._apply_filters(dataframe)
+
+        print(f'Preprocessed derived data finished at {datetime.now()} '
+              f'in {timedelta(seconds=(perf_counter() - start_time))}')
+
+        return dataframe
 
     def _create_preprocessed_folders(self) -> None:
         """Create the folder structure for the preprocessed data."""
@@ -139,9 +153,8 @@ class Playback:
         print(f'Preprocessing base data at {datetime.now()}')
 
         dataframe = self._load_source()
-        dataframe['TIMESTAMP'] = pd.to_datetime(dataframe['DATE'] + ' ' + dataframe['TIME'], format='%Y-%m-%d %H:%M:%S')
-        dataframe.drop(columns=['DATE', 'TIME'], inplace=True)
-        dataframe.sort_values(by=['TIMESTAMP'], inplace=True)
+
+        self._date_and_time_to_timestamp(dataframe)
 
         # FIXME: Conversions are necessary because the source data is not consistent. Remove when fixed.
         dataframe['CALLSIGN'] = dataframe['CALLSIGN'].astype('string')
@@ -153,6 +166,13 @@ class Playback:
         print(f'Preprocessed base data finished at {datetime.now()} '
               f'in {timedelta(seconds=(perf_counter() - start_time))}')
 
+    @staticmethod
+    def _date_and_time_to_timestamp(dataframe: pd.DataFrame) -> None:
+        """Convert the date and time columns to a timestamp column and drop the date and time columns."""
+        dataframe['TIMESTAMP'] = pd.to_datetime(dataframe['DATE'] + ' ' + dataframe['TIME'], format='%Y-%m-%d %H:%M:%S')
+        dataframe.drop(columns=['DATE', 'TIME'], inplace=True)
+        dataframe.sort_values(by=['TIMESTAMP'], inplace=True)
+
     def _load_derived_playback(self) -> pd.DataFrame:
         """Load the preprocessed data from the preprocessed data folder."""
         print(f'Loading derived data at {datetime.now()}')
@@ -160,6 +180,17 @@ class Playback:
         dataframe = pd.read_parquet(os.path.join(self.prepro_derived_folder, f'{self.hash_filter_parameters}.parquet'))
 
         return dataframe
+
+    def _get_columns(self) -> list[str]:
+        """Return a list of columns.
+
+        Used to limit the columns read from the source data or the preprocessed data.
+        """
+        if self.player == 'simple':
+            return ['MMSI', 'IMO', 'STATUS', 'SOG', 'LON', 'LAT', 'COG', 'HEADING', 'TIMESTAMP']
+
+        if self.player == 'extended':
+            raise NotImplementedError('Extended player not implemented yet.')
 
     def _preprocess_playback_derived(self) -> pd.DataFrame:
         """Derive a subset of the preprocessed data based on the given parameters.
@@ -184,18 +215,17 @@ class Playback:
     def _load_base_playback(self) -> pd.DataFrame:
         """Load the base preprocessed data from the preprocessed data folder."""
         print(f'Loading preprocessed base data at {datetime.now()}')
-        dataframe = None
-
-        if self.player == 'simple':
-            base_playback_file = os.path.join(self.prepro_base_folder, 'base.parquet')
-            columns_to_read = ['MMSI', 'IMO', 'STATUS', 'SOG', 'LON', 'LAT', 'COG', 'HEADING', 'TIMESTAMP']
-            columns_order = ['MMSI', 'IMO', 'STATUS', 'SOG', 'LON', 'LAT', 'COG', 'HEADING', 'TIMESTAMP']
-            dataframe = pd.read_parquet(base_playback_file,
-                                        columns=columns_to_read,
-                                        )[columns_order]
 
         if self.player == 'extended':
             raise NotImplementedError('Extended player not implemented yet.')
+
+        base_playback_file = os.path.join(self.prepro_base_folder, 'base.parquet')
+
+        dataframe = pd.read_parquet(base_playback_file,
+                                    columns=self._get_columns(),
+                                    )
+        # Changes the order of the columns for consistency.
+        dataframe = dataframe[self._get_columns()]
 
         print('Loading complete')
 
