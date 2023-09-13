@@ -9,8 +9,10 @@ from moviepy.editor import ImageSequenceClip
 
 
 class MapPlotter(PlaybackProcessor):
-    """Processor responsible for creating a map of the vessel's movements,
-    then combining the images into a mp4 video."""
+    """Processor capable of creating maps of the vessel's movements then combining the images into a video.
+
+    The map is created using Cartopy saved as a png, then the pngs are combined into a mp4 using MoviePy.
+    """
 
     def __init__(self,
                  *,
@@ -38,8 +40,8 @@ class MapPlotter(PlaybackProcessor):
     def begun(self) -> None:
         """Reinitialise the processor so that the plot is empty and the loop count is 0.
 
-        Also creates the save folder if it doesn't exist."""
-
+        Also creates the save folder if it doesn't exist.
+        """
         self.__init__(target_folder=self.save_path)  # FIXME: This is a hacky way to reinitialise the processor
 
         if not os.path.exists(self.save_path):

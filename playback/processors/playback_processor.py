@@ -11,12 +11,12 @@ class PlaybackProcessor(ABC):
 
     @abstractmethod
     def begun(self) -> None:
-        """Called once when playback begins."""
+        """Execute once when playback begins."""
 
     @abstractmethod
     def process(self, data: pd.DataFrame) -> None:
-        """Called each time a new dataframe is emitted during playback."""
+        """Execute each time a new dataframe is emitted during playback."""
 
     @abstractmethod
     def end(self) -> None:
-        """Called once when playback ends."""
+        """Execute once when playback ends."""

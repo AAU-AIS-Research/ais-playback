@@ -1,4 +1,4 @@
-# Related to testing
+# Related to testing and test coverage
 tests/data/temp/*
 .coverage
 

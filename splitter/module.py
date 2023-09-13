@@ -91,7 +91,6 @@ def split(*, config_path: str, source_path: str, target_path: str, prune_to_date
                 config['ExtendedColumns']['d']: 'D'
             }, inplace=True)
 
-
         # Ensure target path exists, create it if it does not.
         if not os.path.exists(target_path):
             os.makedirs(target_path)

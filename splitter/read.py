@@ -18,7 +18,7 @@ def read_csv(file_name: str, config: configparser.ConfigParser) -> pd.DataFrame:
     if not file_name.endswith('.csv'):
         raise ValueError("File must be a csv file")
     else:
-        dataframe = pd.read_csv(file_name, sep=seperator, encoding=encoding, na_values=na_values, keep_default_na=False)
+        dataframe = pd.read_csv(file_name, sep=seperator, encoding=encoding, na_values=na_values)
     return dataframe
 
 
