@@ -3,210 +3,142 @@ import pandas as pd
 import os
 from splitter.read import read_csv, read_config
 from helper_functions import collect_files
+from splitter.readers.source_reader import SourceReader
 import configparser
 
 from datetime import datetime, timedelta
 from time import perf_counter
 
 
-def split(*, config_path: str, source_path: str, target_path: str, prune_to_date: datetime.date = None) -> None:
-    """Split the AIS data.
+class Splitter:
 
-    Args:
-        config_path: The path to the config file.
-        source_path: The path to the source data. If a folder, all files in the folder will be split.
-        target_path: The path to the target folder. Will be created if it does not exist.
-        prune_to_date: The date to prune the data to. If None, all data will be split. (default: None)
-    """
-    total_start_time = perf_counter()
-    config_name = os.path.basename(config_path)
+    def __init__(self,
+                 *,
+                 target_path: str,
+                 reader: SourceReader,
+                 ) -> None:
+        """Initialize the splitter."""
+        self.target_path = target_path
+        self.reader = reader
 
-    print(f'Splitting AIS data using config: {config_name} at {datetime.now()}')
-    print(f'Source path: {source_path}')
-    print(f'Target path: {target_path}')
+    def split(self,
+              *,
+              source_path: str,
+              target_path: str = None,
+              prune_to_date: datetime.date = None  # TODO: Don't forget to implement this, i'm looking at you, future me.
+              ) -> None:
+        """Split the AIS data.
 
-    config = read_config(config_path)
-    files = collect_files(source_path, config['DataSource']['filetype'])
-    current_file_number = 0
-    number_of_files = len(files)
+        The AIS data will be split into files by date and by vessel.
 
-    print(f'Number of files to split: {number_of_files}')
+        Args:
+            source_path: The path to the source data. If a folder, all files in the folder will be split.
+            target_path: The path to the target folder. Will be created if it does not exist.
+                If None, the target path given in the constructor will be used. (default: None)
+            prune_to_date: The date to prune the data to. If None, all data will be split. (default: None)
+        """
+        target_path = self.target_path if target_path is None else target_path
+        start_time = perf_counter()
 
-    for file in files:
-        start_time_file = perf_counter()
-        file_name = os.path.basename(file)
+        print(f'Splitting AIS data using config: {self.config} at {datetime.now()}')
+        print(f'Source path: {source_path} --> Target path: {target_path}')
 
-        current_file_number += 1
-        print(f'Attempting to split file {current_file_number} of {number_of_files}: {file_name} at {datetime.now()}')
+        files = collect_files(source_path, self.config['DataSource']['filetype'])
+        current_file_number = 0
+        number_of_files = len(files)
 
-        start_time_read = perf_counter()
-        dataframe = read_csv(file, config)
+        print(f'Number of files to split: {number_of_files}')
 
-        print(f'File {file_name} read successfully in '
-              f'{timedelta(seconds=(perf_counter() - start_time_read))} at {datetime.now()}')
+        for file in files:
+            current_file_number += 1
 
-        # Drop rows with missing values
-        size_before = dataframe.shape[0]
-        dataframe.dropna(subset=[
-            config['SimpleColumns']['mmsi'],
-            config['SimpleColumns']['timestamp'],
-            config['SimpleColumns']['lat'],
-            config['SimpleColumns']['long'],
-        ], inplace=True)
-        size_after = dataframe.shape[0]
-        print(f'Dropped {size_before - size_after} rows with missing values for MMSI, timestamp, lat or long')
+            print(f'Attempting to split file {current_file_number} of {number_of_files}: {file} at {datetime.now()}')
 
-        # Split timestamp column into date and time
-        _split_timestamp_column(dataframe, config)
+            dataframe = self._read_file(file)
 
-        # Rename columns to ensure consistent output across all data sources.
-        dataframe.rename(columns={
-            config['SimpleColumns']['mmsi']: 'MMSI',
-            config['SimpleColumns']['imo']: 'IMO',
-            config['SimpleColumns']['status']: 'STATUS',
-            config['SimpleColumns']['sog']: 'SOG',
-            config['SimpleColumns']['lat']: 'LAT',
-            config['SimpleColumns']['long']: 'LON',
-            config['SimpleColumns']['cog']: 'COG',
-            config['SimpleColumns']['heading']: 'HEADING',
-        }, inplace=True)
+            size_before = dataframe.shape[0]
 
-        if config.has_section('ExtendedColumns'):
-            dataframe.rename(columns={
-                config['ExtendedColumns']['ship-name']: 'SHIPNAME',
-                config['ExtendedColumns']['callsign']: 'CALLSIGN',
-                config['ExtendedColumns']['mobile-type']: 'MOBILE TYPE',
-                config['ExtendedColumns']['ship-type']: 'SHIP TYPE',
-                config['ExtendedColumns']['cargo-type']: 'CARGO TYPE',
-                config['ExtendedColumns']['device-type']: 'TRANSPONDER TYPE',
-                config['ExtendedColumns']['width']: 'WIDTH',
-                config['ExtendedColumns']['length']: 'LENGTH',
-                config['ExtendedColumns']['draught']: 'DRAUGHT',
-                config['ExtendedColumns']['destination']: 'DESTINATION',
-                config['ExtendedColumns']['data-source']: 'DATA SOURCE',
-                config['ExtendedColumns']['eta']: 'ETA',
-                config['ExtendedColumns']['a']: 'A',
-                config['ExtendedColumns']['b']: 'B',
-                config['ExtendedColumns']['c']: 'C',
-                config['ExtendedColumns']['d']: 'D'
-            }, inplace=True)
+            dataframe.dropna(subset=[
+                'MMSI',
+                'TIMESTAMP',
+                'LAT',
+                'LON'
+            ], inplace=True)
 
-        # Ensure target path exists, create it if it does not.
-        if not os.path.exists(target_path):
-            os.makedirs(target_path)
+            dataframe.sort_values(by=['DATE', 'TIME'], inplace=True, ascending=True)
 
-        _split_by_date_by_vessel(config, dataframe, prune_to_date, target_path)
+            size_after = dataframe.shape[0]
 
-        print(f'File {file_name} split successfully in '
-              f'{timedelta(seconds=(perf_counter() - start_time_file))} at {datetime.now()} \n')
+            print(f'Dropped {size_before - size_after} rows with missing values for MMSI, timestamp, lat or long')
 
-    print(f'Splitting AIS data using config: {config_name} completed successfully in '
-          f'{timedelta(seconds=(perf_counter() - total_start_time))} at {datetime.now()}')
+            # Prune to date
+            if prune_to_date is not None:
+                dataframe = dataframe[dataframe['DATE'] == prune_to_date]
 
+            for dataframe_day in self._split_by_day(dataframe):
+                date = dataframe_day['DATE'].iloc[0]
 
-def _split_timestamp_column(dataframe: pd.DataFrame, config: configparser.ConfigParser) -> pd.DataFrame:
-    """Split the datetime column into date and time columns.
+                if not os.path.exists(os.path.join(target_path, str(date))):
+                    os.makedirs(os.path.join(target_path, str(date)))
 
-    Args:
-        dataframe: The dataframe to split.
-        config: A configparser object containing the configuration.
-    """
-    timestamp_column = config['SimpleColumns']['timestamp']
-    timestamp_format = config['DataSource']['timestamp-format']
+                for dataframe_vessel in self._split_by_vessel(dataframe_day):
+                    mmsi = int(dataframe_vessel['MMSI'].iloc[0])
 
-    # pandas.to_datetime is used to convert the timestamp column to a datetime object, where the accessor functions
-    # .dt.date and .dt.time are used to extract the date and time respectively.
-    dataframe['DATE'] = pd.to_datetime(dataframe[timestamp_column], format=timestamp_format).dt.date
-    dataframe['TIME'] = pd.to_datetime(dataframe[timestamp_column], format=timestamp_format).dt.time
+                    dataframe_vessel.to_csv(
+                        os.path.join(target_path, str(date), str(mmsi) + '.csv'),
+                        index=False,
+                        sep='|',
+                        encoding='utf-8',
+                        header=True)
 
-    # Drop the original timestamp column
-    dataframe.drop(columns=[timestamp_column], inplace=True)
+            print(f'File {file} split successfully at {datetime.now()} '
+                  f'in {timedelta(seconds=(perf_counter() - start_time))}')
 
-    return dataframe
+    def _read_file(self, file_name: str) -> pd.DataFrame:
+        """Read a file and return a pandas dataframe.
 
+        Args:
+            file_name: The path to the file to read.
+        """
+        start_time = perf_counter()
 
-def _split_by_date_by_vessel(config: configparser.ConfigParser,
-                             dataframe: pd.DataFrame,
-                             prune_to_date: datetime.date,
-                             target_path: str
-                             ) -> None:
-    """Split the AIS data by date and by vessel.
+        print(f'Reading file {file_name} at {datetime.now()}')
 
-    Args:
-        config: A configparser object containing the configuration.
-        dataframe: The dataframe to split.
-        prune_to_date: The date to prune the data to. If None, all data will be split. (default: None)
-        target_path: The path to save the split data to.
-    """
-    vessel_mmsi = config['SimpleColumns']['mmsi']
+        dataframe = self.reader.read_file(file_name)
 
-    # Split by date
-    for dataframe_date in _split_by_time(dataframe):
-        # Get the earliest date in dataframe
-        date = dataframe_date['DATE'].iloc[0]
+        print(f'File {file_name} read successfully at {datetime.now()} in {timedelta(seconds=(perf_counter() - start_time))}')
 
-        # If date is before or after prune_to_date, skip it
-        if prune_to_date is not None and date != prune_to_date:
-            continue
+        return dataframe
 
-        print(f'Splitting vessels for date {date} at {datetime.now()}')
+    @staticmethod
+    def _split_by_day(dataframe: pd.DataFrame) -> list[pd.DataFrame]:
+        """Split a dataframe by day and return a list of dataframes.
 
-        start_time_date = perf_counter()
+        Each dataframe in the list will contain data for a single day.
 
-        # Create date folder if it does not exist
-        if not os.path.exists(os.path.join(target_path, str(date))):
-            os.makedirs(os.path.join(target_path, str(date)))
+        Args:
+            dataframe: The dataframe to split."""
 
-        # Split by vessel
-        for dataframe_vessel in _split_by_vessel(dataframe_date, config):
-            mmsi = int(dataframe_vessel[vessel_mmsi].iloc[0])
+        dataframe_list = []
 
-            # Write to file
-            dataframe_vessel.to_csv(
-                os.path.join(target_path, str(date), str(mmsi) + '.csv'),
-                index=False,
-                sep='|',
-                encoding='utf-8',
-                header=True)
+        for group in dataframe.groupby('DATE'):
+            dataframe_list.append(group[1])
 
-        print(f'Date {date} split successfully in '
-              f'{timedelta(seconds=(perf_counter() - start_time_date))} at {datetime.now()}')
+        return dataframe_list
 
+    @staticmethod
+    def _split_by_vessel(dataframe: pd.DataFrame) -> list[pd.DataFrame]:
+        """Split a dataframe by vessel and return a list of dataframes.
 
-def _split_by_time(dataframe: pd.DataFrame) -> list[pd.DataFrame]:
-    """Split the AIS data by time.
+        Each dataframe in the list will contain data for a single vessel (MMSI).
 
-    Args:
-        dataframe: The dataframe to split.
-    """
-    date_column = 'DATE'
-    time_column = 'TIME'
-    dataframe = dataframe
-    dataframe_list = []
+        Args:
+            dataframe: The dataframe to split.
+        """
 
-    dataframe.sort_values(by=[date_column, time_column], inplace=True, ascending=True)
-    for group in dataframe.groupby(date_column):
-        dataframe_list.append(group[1])
+        dataframe_list = []
 
-    return dataframe_list
+        for group in dataframe.groupby('MMSI'):
+            dataframe_list.append(group[1])
 
-
-def _split_by_vessel(dataframe: pd.DataFrame, config: configparser.ConfigParser) -> list[pd.DataFrame]:
-    """Split the AIS data by vessel.
-
-    Args:
-        dataframe: The dataframe to split.
-        config: A configparser object containing the configuration.
-    """
-    vessel_mmsi = config['SimpleColumns']['mmsi']
-    vessel_mmsi_list = dataframe[vessel_mmsi].unique().tolist()
-
-    dataframe_splits = []
-    for vessel in dataframe.groupby(vessel_mmsi):
-        dataframe_splits.append(vessel[1])
-
-    # Check that the number of splits matches the number of unique vessels
-    if len(dataframe_splits) != len(vessel_mmsi_list):
-        raise ValueError("The number of splits does not match the number of unique vessels")
-
-    return dataframe_splits
+        return dataframe_list
