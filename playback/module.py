@@ -20,8 +20,7 @@ class Playback:
                  start_time: datetime.time = time.min,
                  stop_time: datetime.time = time.max,
                  player: str = 'simple',
-                 processor: PlaybackProcessor = Printer(),
-                 verbose: bool = True
+                 processor: PlaybackProcessor = Printer()
                  ) -> None:
         """Initialise the playback class.
 
@@ -156,9 +155,6 @@ class Playback:
 
         self._date_and_time_to_timestamp(dataframe)
 
-        # FIXME: Conversions are necessary because the source data is not consistent. Remove when fixed.
-        dataframe['CALLSIGN'] = dataframe['CALLSIGN'].astype('string')
-
         print('Saving base file for preprocessed data...')
 
         self._save_parquet(dataframe, os.path.join(self.prepro_base_folder, 'base.parquet'))
@@ -187,7 +183,7 @@ class Playback:
         Used to limit the columns read from the source data or the preprocessed data.
         """
         if self.player == 'simple':
-            return ['MMSI', 'IMO', 'STATUS', 'SOG', 'LON', 'LAT', 'COG', 'HEADING', 'TIMESTAMP']
+            return ['MMSI', 'IMO', 'NAV STATUS', 'SOG', 'LONGITUDE', 'LATITUDE', 'COG', 'HEADING', 'TIMESTAMP']
 
         if self.player == 'extended':
             raise NotImplementedError('Extended player not implemented yet.')
@@ -276,7 +272,10 @@ class Playback:
             if source_files.index(file) % 100 == 0:
                 percentage_done = round(source_files.index(file) / number_of_files * 100, 2)
                 print(f'\rLoading file {source_files.index(file)} of {number_of_files} ({percentage_done}%)', end='')
-            dataframe_list.append(pd.read_csv(file, encoding='utf-8', sep='|'))
+            dataframe_list.append(pd.read_csv(file, encoding='utf-8', sep='|',
+                                              dtype={
+                                                  'CALLSIGN': 'string',
+                                              }))
 
         print(f'\nLoaded source data at {datetime.now()} in {timedelta(seconds=(perf_counter() - start_time))}')
 

@@ -1,4 +1,4 @@
 """This package contains modules for splitting AIS data."""
-from .module import split
+from .module import Splitter
 
-__all__ = ["split"]
+__all__ = ["Splitter"]
