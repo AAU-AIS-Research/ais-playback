@@ -12,17 +12,6 @@ Readers are classes that read the source files and return a `DataFrame` from the
 
 Further documentation on readers will be added later, as their requirements are still being defined.
 
-Example:
-
-```python
-from splitter import Splitter
-from splitter.readers import DMAReader # Reader for the Danish Maritime Authority
-
-dma_splitter = Splitter(
-    target_path='C:/Project Data/Split/DMA',
-    reader=DMAReader())
-```
-
 To split a file, call the `split` method on the splitter object with the following parameters:
 * `source_path`: Path to the source file to split, must be a csv file or folder containing csv files.
 * `target_path`: Path to the folder where the split files should be stored. Optional, defaults to the target_path specified when initializing the splitter object.
@@ -31,7 +20,13 @@ To split a file, call the `split` method on the splitter object with the followi
 Example:
 
 ```python
+from splitter import Splitter
+from splitter.readers import DMAReader # Reader for the Danish Maritime Authority
 import datetime
+
+dma_splitter = Splitter(
+    target_path='C:/Project Data/Split/DMA',
+    reader=DMAReader())
 
 dma_splitter.split(
     source_path='C:/Project Data/AIS/DMA/2023-08-13.csv',
