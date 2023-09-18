@@ -40,10 +40,9 @@ class Splitter:
         target_path = self.target_path if target_path is None else target_path
         start_time = perf_counter()
 
-        print(f'Splitting AIS data using config: {self.config} at {datetime.now()}')
-        print(f'Source path: {source_path} --> Target path: {target_path}')
+        print(f'Splitting AIS data from source path: {source_path} -- to -> target path: {target_path}')
 
-        files = collect_files(source_path, self.config['DataSource']['filetype'])
+        files = collect_files(source_path, '.csv')
         current_file_number = 0
         number_of_files = len(files)
 
@@ -58,14 +57,15 @@ class Splitter:
 
             size_before = dataframe.shape[0]
 
-            dataframe.dropna(subset=[
-                'MMSI',
-                'TIMESTAMP',
-                'LAT',
-                'LON'
-            ], inplace=True)
-
             dataframe.sort_values(by=['DATE', 'TIME'], inplace=True, ascending=True)
+
+            dataframe.dropna(subset=[
+                'DATE',
+                'TIME',
+                'MMSI',
+                'LATITUDE',
+                'LONGITUDE'
+            ], inplace=True)
 
             size_after = dataframe.shape[0]
 

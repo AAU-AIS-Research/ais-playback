@@ -14,31 +14,9 @@ class SourceReader(ABC):
     def read_file(self, file_path: str) -> pd.DataFrame:
         """Read a file and return a pandas dataframe.
 
-        The dataframe should be in the format:
-            - DAY with format YYYY-MM-DD
-            - TIME with format HH:MM:SS
-            - MMSI as an integer
-            - IMO as an integer
-            - LATITUDE as a float
-            - LONGITUDE as a float
-            - SOG as a float
-            - COG as a float
-            - ROT as a float
-            - HEADING as an integer
-            - NAV_STATUS as an integer
-            - TYPE as an integer
-            - DRAUGHT as a float
-            - A integer
-            - B integer
-            - C integer
-            - D integer
-            - CALLSIGN as a string
-            - DESTINATION as a string
-            - ETA as a string
-            - NAME as a string
-
-        Additional columns should be included with proper types and upper case names.
-        Please take care of removing all null values from the dataframe before returning it.
+        If you are going to implement a new reader, please ensure that the dataframe returned by this method follows
+            the documentation for the splitter module. TODO: Create documentation and then add link.
+        See DMAReader for an example of how to implement this method.
 
         Args:
             file_path: The path to the file to read.
