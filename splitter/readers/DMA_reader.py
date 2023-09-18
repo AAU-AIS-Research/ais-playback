@@ -1,11 +1,12 @@
-"""Reader for Danish  files."""
+"""Reader for files from the Danish Maritime Authority."""
 from splitter.readers.source_reader import SourceReader
 import pandas as pd
 
 
 class DMAReader(SourceReader):
+    """Reader for files from the Danish Maritime Authority."""
 
-    def read_file(self, file_path) -> pd.DataFrame:
+    def read_file(self, file_path: str) -> pd.DataFrame:
         """Read a DMA file and return a pandas dataframe.
 
         Args:
@@ -38,8 +39,7 @@ class DMAReader(SourceReader):
                                     'A': 'Int8',
                                     'B': 'Int8',
                                     'C': 'Int8',
-                                    'D': 'Int8'
-                                })
+                                    'D': 'Int8'})
 
         dataframe = dataframe.rename(columns={
             '# Timestamp': 'TIMESTAMP',

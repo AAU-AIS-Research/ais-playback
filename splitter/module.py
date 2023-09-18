@@ -1,16 +1,14 @@
 """Module for splitting AIS data into files by vessel by day."""
 import pandas as pd
 import os
-from splitter.read import read_csv, read_config
 from helper_functions import collect_files
 from splitter.readers.source_reader import SourceReader
-import configparser
-
 from datetime import datetime, timedelta
 from time import perf_counter
 
 
 class Splitter:
+    """Class for splitting AIS data into files by vessel by day."""
 
     def __init__(self,
                  *,
@@ -25,7 +23,7 @@ class Splitter:
               *,
               source_path: str,
               target_path: str = None,
-              prune_to_date: datetime.date = None  # TODO: Don't forget to implement this, i'm looking at you, future me.
+              prune_to_date: datetime.date = None
               ) -> None:
         """Split the AIS data.
 
@@ -106,7 +104,8 @@ class Splitter:
 
         dataframe = self.reader.read_file(file_name)
 
-        print(f'File {file_name} read successfully at {datetime.now()} in {timedelta(seconds=(perf_counter() - start_time))}')
+        print(f'File {file_name} read successfully at {datetime.now()} '
+              f'in {timedelta(seconds=(perf_counter() - start_time))}')
 
         return dataframe
 
@@ -117,8 +116,8 @@ class Splitter:
         Each dataframe in the list will contain data for a single day.
 
         Args:
-            dataframe: The dataframe to split."""
-
+            dataframe: The dataframe to split.
+        """
         dataframe_list = []
 
         for group in dataframe.groupby('DATE'):
@@ -135,7 +134,6 @@ class Splitter:
         Args:
             dataframe: The dataframe to split.
         """
-
         dataframe_list = []
 
         for group in dataframe.groupby('MMSI'):

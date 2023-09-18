@@ -51,7 +51,6 @@ class Playback:
         self.player = player
 
         # Other variables
-        self.verbose = verbose
         self.processor = processor
 
     @property
